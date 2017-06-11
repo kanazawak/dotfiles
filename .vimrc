@@ -70,6 +70,7 @@ endif
 
 noremap <silent> <Space>ue :Unite -vertical bookmark file <CR> 
 noremap <silent> <Space>um :Unite -vertical file_mru <CR>
+noremap <silent> <Space>ub :Unite -vertical buffer <CR>
 noremap <silent> <Space>uf :Unite -start-insert file_rec/async <CR>
 noremap <silent> <Space>ug :Unite grep <CR>
 
