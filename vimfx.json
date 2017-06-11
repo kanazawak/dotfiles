@@ -2,6 +2,7 @@
   "hints.chars": "asdfjklweruio gh",
   "mode.normal.paste_and_go": "",
   "mode.normal.paste_and_go_in_tab": "",
+  "mode.normal.scroll_left": "",
   "mode.normal.scroll_right": "",
   "mode.normal.scroll_down": "",
   "mode.normal.scroll_page_down": "<c-f> <space>",
