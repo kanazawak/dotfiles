@@ -1,15 +1,10 @@
 call plug#begin('~/.vim/plugged')
     Plug 'tpope/vim-endwise'
     Plug 'tomtom/tcomment_vim'
-
-    Plug 'simeji/winresizer'
     Plug 'itchyny/lightline.vim'
-
-    Plug 'francoiscabrol/ranger.vim'
     Plug 'cocopon/vaffle.vim'
-
-    Plug '/usr/local/opt/fzf'
-    Plug 'junegunn/fzf.vim'
+    Plug 'ctrlpvim/ctrlp.vim'
+    Plug 'mileszs/ack.vim'
 call plug#end()
 
 set backspace=indent,eol,start
@@ -33,27 +28,37 @@ set hlsearch
 
 set visualbell t_vb=
 
-let g:winresizer_vert_resize = 1
-let g:winresizer_horiz_resize = 1
-nnoremap <silent> <C-w>r :WinResizerStartResize<CR>
-tnoremap <silent> <C-w>r <C-w>:WinResizerStartResize<CR>
-
 " File Explorer
-nnoremap <Space>e :execute 'Vaffle' expand("%:p:h")<CR>
-" nnoremap <Space>e :Ranger<CR>
+function! StartExplorer()
+    if (has('win32') || has ('win64')) && &filetype ==# 'vaffle'
+        execute "!start" split(expand("%"), '/')[3]
+    else
+        execute "Vaffle" expand("%:p:h")
+    endif
+endfunction
+noremap <Space>e :call StartExplorer()<CR>
 
-" fzf
-let g:fzf_action = {
-  \ 'ctrl-t': 'tab split',
-  \ 'ctrl-s': 'split',
-  \ 'ctrl-v': 'vsplit' }
-nnoremap <Space>f :Files<CR>
-nnoremap <Space>h :History<CR>
-nnoremap <Space>b :Buffers<CR>
-nnoremap <Space>g :Rg<CR>
-command! -bang -nargs=* Rg
-  \ call fzf#vim#grep(
-  \   'rg --line-number --no-heading '.shellescape(<q-args>), 0,
-  \   fzf#vim#with_preview({'options': '--exact --reverse --delimiter : --nth 3..'}), <bang>0)
+let g:loaded_zip = 1
+let g:loaded_zipPlugin = 1
 
-nnoremap <Space>r :!%
+if has('win32') || has ('win64')
+    function! ExecAssocApp(path)
+        execute "!start" a:path
+    endfunction
+
+    augroup open_nontext_file
+        autocmd!
+        autocmd BufReadCmd *.pdf,*.xlsx,*.docx call ExecAssocApp(shellescape(expand("<afile>")))
+    augroup END
+endif
+
+let g:ctrlp_max_height = 20
+nnoremap <Space>f :CtrlPCurWD<CR>
+nnoremap <Space>h :CtrlPMRU<CR>
+nnoremap <Space>b :CtrlPBuffer<CR>
+nnoremap <Space>g :Ack!
+if executable('rg')
+  let g:ctrlp_user_command = 'rg %s --files --color=never --glob ""'
+  let g:ctrlp_use_caching = 0
+  let g:ackprg = 'rg --vimgrep --no-heading'
+endif
