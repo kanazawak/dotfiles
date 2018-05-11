@@ -1,10 +1,10 @@
 call plug#begin('~/.vim/plugged')
     Plug 'tpope/vim-endwise'
     Plug 'tomtom/tcomment_vim'
-    Plug 'itchyny/lightline.vim'
-    Plug 'cocopon/vaffle.vim'
-    Plug 'ctrlpvim/ctrlp.vim'
-    Plug 'mileszs/ack.vim'
+    Plug 'vim-airline/vim-airline'
+    Plug 'justinmk/vim-dirvish'
+    Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --all' }
+    Plug 'junegunn/fzf.vim'
 call plug#end()
 
 set backspace=indent,eol,start
@@ -30,13 +30,22 @@ set visualbell t_vb=
 
 " File Explorer
 function! StartExplorer()
-    if (has('win32') || has ('win64')) && &filetype ==# 'vaffle'
-        execute "!start" split(expand("%"), '/')[3]
+    if (has('win32') || has ('win64')) && &filetype ==# 'dirvish'
+        execute "!start" expand("%")
     else
-        execute "Vaffle" expand("%:p:h")
+        Dirvish %:p:h
+        norm gg
     endif
 endfunction
 noremap <Space>e :call StartExplorer()<CR>
+
+let g:dirvish_mode = ':sort ,^.*[\/],'
+augroup dirvish_config
+  autocmd!
+  autocmd FileType dirvish
+    \ nmap <silent><buffer> h <Plug>(dirvish_up)
+    \|nmap <silent><buffer> l <CR>
+augroup END
 
 let g:loaded_zip = 1
 let g:loaded_zipPlugin = 1
@@ -52,13 +61,58 @@ if has('win32') || has ('win64')
     augroup END
 endif
 
-let g:ctrlp_max_height = 20
-nnoremap <Space>f :CtrlPCurWD<CR>
-nnoremap <Space>h :CtrlPMRU<CR>
-nnoremap <Space>b :CtrlPBuffer<CR>
-nnoremap <Space>g :Ack!
+try
+    function! ExecuteThisFile()
+        w
+        if &filetype ==# 'vim'
+            source %
+        endif
+    endfunction
+catch
+endtry
+nnoremap <Space>r :call ExecuteThisFile()<CR>
+
+function! s:find_file()
+    if &filetype ==# 'dirvish'
+        FZF %
+    else
+        FZF
+    endif
+endfunction
+command! FindFile call s:find_file()
+nnoremap <Space>f :FindFile<CR>
+
+function! s:find_dir()
+    if has('win32') || has ('win64')
+        let cmd = 'dir'
+        let opt = '/b /s/ ad'
+    else
+        let cmd = 'find'
+        let opt = '-type d'
+    endif
+
+    if &filetype ==# 'dirvish'
+        let dir = expand("%:p:h")
+    else
+        let dir = '.'
+    end
+
+    call fzf#run({
+        \ 'source': join([cmd, dir, opt], ' '),
+        \ 'sink': 'Dirvish',
+        \ 'down': '40%',
+        \})
+endfunction
+command! FindDir call s:find_dir()
+nnoremap <Space>d :FindDir<CR>
+
+nnoremap <Space>h :History<CR>
+nnoremap <Space>b :Buffers<CR>
+
 if executable('rg')
-  let g:ctrlp_user_command = 'rg %s --files --color=never --glob ""'
-  let g:ctrlp_use_caching = 0
-  let g:ackprg = 'rg --vimgrep --no-heading'
+    command! -bang -nargs=* Rg
+    \ call fzf#vim#grep(
+    \ 'rg --line-number --no-heading '.shellescape(<q-args>), 0,
+    \ fzf#vim#with_preview({'options': '--exact --reverse --delimiter : --nth 3..'}, 'right:50%:wrap'))
+    nnoremap <Space>g :Rg<CR>
 endif
