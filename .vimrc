@@ -3,6 +3,7 @@ call plug#begin('~/.vim/plugged')
     Plug 'tomtom/tcomment_vim'
     Plug 'vim-airline/vim-airline'
     Plug 'justinmk/vim-dirvish'
+    " Plug 'cocopon/vaffle.vim'
     Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --all' }
     Plug 'junegunn/fzf.vim'
 call plug#end()
@@ -22,29 +23,38 @@ set tabstop=4
 set shiftwidth=4
 set softtabstop=0
 
-set ignorecase
+set smartcase
 set incsearch
 set hlsearch
 
 set visualbell t_vb=
 
+set history=1000
+
 " File Explorer
+let s:file_explorer_command = 'Dirvish'
+let s:file_explorer_file_type = tolower(s:file_explorer_command)
 function! StartExplorer()
-    if (has('win32') || has ('win64')) && &filetype ==# 'dirvish'
+    if (has('win32') || has ('win64')) && &filetype ==# s:file_explorer_type
         execute "!start" expand("%")
     else
-        Dirvish %:p:h
+        execute s:file_explorer_command expand("%:p:h")
         norm gg
     endif
 endfunction
-noremap <Space>e :call StartExplorer()<CR>
+noremap <silent> <Space>e :call StartExplorer()<CR>
+
+function! s:dirvish_init()
+    nmap <buffer> h <Plug>(dirvish_up)
+    nmap <buffer> l <CR>
+    nmap <buffer> <Esc> <Plug>(dirvish_quit)
+    if !empty(maparg('q', 'n')) | unmap <buffer> q | endif
+endfunction
 
 let g:dirvish_mode = ':sort ,^.*[\/],'
 augroup dirvish_config
-  autocmd!
-  autocmd FileType dirvish
-    \ nmap <silent><buffer> h <Plug>(dirvish_up)
-    \|nmap <silent><buffer> l <CR>
+    autocmd!
+    autocmd FileType dirvish silent! call s:dirvish_init()
 augroup END
 
 let g:loaded_zip = 1
@@ -57,7 +67,8 @@ if has('win32') || has ('win64')
 
     augroup open_nontext_file
         autocmd!
-        autocmd BufReadCmd *.pdf,*.xlsx,*.docx call ExecAssocApp(shellescape(expand("<afile>")))
+        autocmd BufReadCmd *.pdf, *.xlsx, *xlsm, *.docx
+            \call ExecAssocApp(shellescape(expand("<afile>")))
     augroup END
 endif
 
@@ -66,6 +77,8 @@ try
         w
         if &filetype ==# 'vim'
             source %
+        else
+            !%
         endif
     endfunction
 catch
@@ -73,7 +86,7 @@ endtry
 nnoremap <Space>r :call ExecuteThisFile()<CR>
 
 function! s:find_file()
-    if &filetype ==# 'dirvish'
+    if &filetype ==# s:file_explorer_file_type
         FZF %
     else
         FZF
@@ -91,7 +104,7 @@ function! s:find_dir()
         let opt = '-type d'
     endif
 
-    if &filetype ==# 'dirvish'
+    if &filetype ==# s:file_explorer_file_type
         let dir = expand("%:p:h")
     else
         let dir = '.'
@@ -99,7 +112,7 @@ function! s:find_dir()
 
     call fzf#run({
         \ 'source': join([cmd, dir, opt], ' '),
-        \ 'sink': 'Dirvish',
+        \ 'sink': s:file_explorer_command,
         \ 'down': '40%',
         \})
 endfunction
@@ -108,6 +121,7 @@ nnoremap <Space>d :FindDir<CR>
 
 nnoremap <Space>h :History<CR>
 nnoremap <Space>b :Buffers<CR>
+nnoremap <Space>: :History:<CR>
 
 if executable('rg')
     command! -bang -nargs=* Rg
@@ -116,3 +130,13 @@ if executable('rg')
     \ fzf#vim#with_preview({'options': '--exact --reverse --delimiter : --nth 3..'}, 'right:50%:wrap'))
     nnoremap <Space>g :Rg<CR>
 endif
+
+function! s:start_shell()
+    if &filetype ==# s:file_explorer_file_type
+        call term_start('bash', {'term_finish': 'close', 'cwd': expand("%")})
+    else
+        ter
+    endif
+endfunction
+command! StartShell call s:start_shell()
+nnoremap <Space>s :StartShell<CR>
