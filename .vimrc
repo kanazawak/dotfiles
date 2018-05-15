@@ -6,6 +6,7 @@ call plug#begin('~/.vim/plugged')
     " Plug 'cocopon/vaffle.vim'
     Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --all' }
     Plug 'junegunn/fzf.vim'
+    Plub 'tpope/vim-surround'
 call plug#end()
 
 set backspace=indent,eol,start
