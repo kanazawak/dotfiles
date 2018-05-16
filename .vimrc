@@ -6,7 +6,7 @@ call plug#begin('~/.vim/plugged')
     " Plug 'cocopon/vaffle.vim'
     Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --all' }
     Plug 'junegunn/fzf.vim'
-    Plub 'tpope/vim-surround'
+    Plug 'tpope/vim-surround'
 call plug#end()
 
 set backspace=indent,eol,start
@@ -32,11 +32,13 @@ set visualbell t_vb=
 
 set history=1000
 
+let g:is_windows = has('win32') || has ('win64')
+
 " File Explorer
 let s:file_explorer_command = 'Dirvish'
 let s:file_explorer_file_type = tolower(s:file_explorer_command)
 function! StartExplorer()
-    if (has('win32') || has ('win64')) && &filetype ==# s:file_explorer_file_type
+    if g:is_windows && &filetype ==# s:file_explorer_file_type
         execute "!start" expand("%")
     else
         execute s:file_explorer_command expand("%:p:h")
@@ -44,8 +46,15 @@ function! StartExplorer()
 endfunction
 noremap <silent> <Space>e :call StartExplorer()<CR>
 
-let g:mode_hide_sort = 'sort ,^.*[\/], | silent keeppatterns g@\v/\.[^\/]+/?$@d _ | norm gg'
-let g:mode_sort = 'sort ,^.*[\/], | norm gg'
+let sort = 'sort ,^.*[\/],'
+if g:is_windows
+    let hide = 'silent keeppatterns g@\v\\\.[^\\]+\\?$@d'
+else
+    let hide = 'silent keeppatterns g@\v/\.[^\/]+/?$@d'
+endif
+let go_top = 'norm gg'
+let g:mode_hide_sort = join ([sort, hide, go_top], ' | ')
+let g:mode_sort = join ([sort, go_top], ' | ')
 let g:dirvish_mode = g:mode_hide_sort
 augroup dirvish_config
     autocmd!
@@ -58,10 +67,11 @@ function! s:dirvish_init()
     unmap <buffer> /
     unmap <buffer> ?
     nmap <buffer> h <Plug>(dirvish_up)
-    nmap <buffer> l <CR>
-    nnoremap <buffer> ~ :execute 'Dirvish' expand("~")<CR>
+    nnoremap <silent><buffer> l :call Foward()<CR>
+    nnoremap <silent><buffer> <CR> :call Open()<CR>
+    nnoremap <silent><buffer> ~ :execute 'Dirvish' expand("~")<CR>
     nmap <buffer> <Esc> <Plug>(dirvish_quit)
-    nnoremap <buffer> . :call Toggle()<CR>
+    nnoremap <silent><buffer> . :call Toggle()<CR>
     nmap <buffer> m :execute "!echo" expand("%:p") . ">>" expand("~")."/.vim/.bookmark" <CR>
 endfunction
 
@@ -76,20 +86,21 @@ function! Toggle()
     execute l
 endfunction
 
-let g:loaded_zip = 1
-let g:loaded_zipPlugin = 1
+function! Foward()
+    if isdirectory(getline("."))
+        execute "norm \<CR>"
+    endif
+endfunction
 
-if has('win32') || has ('win64')
-    function! ExecAssocApp(path)
-        execute "!start" a:path
-    endfunction
-
-    augroup open_nontext_file
-        autocmd!
-        autocmd BufReadCmd *.pdf,*.xls,*.xlsx,*xlsm,*.docx
-            \call ExecAssocApp(shellescape(expand("<afile>")))
-    augroup END
-endif
+function! Open()
+    let file = getline(".")
+    let ext = fnamemodify(file, ":e")
+    if g:is_windows && match(ext, '\v^(pdf|xls[xm]?)$') >= 0
+        execute "!start" file
+    else
+        call dirvish#open('edit', 0)
+    end
+endfunction
 
 try
     function! ExecuteThisFile()
@@ -115,7 +126,7 @@ command! FindFile call s:find_file()
 nnoremap <Space>f :FindFile<CR>
 
 function! s:find_dir()
-    if has('win32') || has ('win64')
+    if g:is_windows
         let cmd = 'dir'
         let opt = '/b /s/ ad'
     else
