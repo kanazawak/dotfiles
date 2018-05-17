@@ -32,11 +32,13 @@ set visualbell t_vb=
 
 set history=1000
 
+nnoremap Y y$
+
 let g:is_windows = has('win32') || has ('win64')
 
 " File Explorer
-let s:file_explorer_command = 'Dirvish'
-let s:file_explorer_file_type = tolower(s:file_explorer_command)
+let s:file_explorer_command = 'StartDirvish'
+let s:file_explorer_file_type = 'dirvish'
 function! StartExplorer()
     if g:is_windows && &filetype ==# s:file_explorer_file_type
         execute "!start" expand("%")
@@ -66,13 +68,31 @@ function! s:dirvish_init()
     unmap <buffer> q
     unmap <buffer> /
     unmap <buffer> ?
-    nmap <buffer> h <Plug>(dirvish_up)
+    nnoremap <silent><buffer> h :call Back()<CR>
     nnoremap <silent><buffer> l :call Foward()<CR>
     nnoremap <silent><buffer> <CR> :call Open()<CR>
     nnoremap <silent><buffer> ~ :execute 'Dirvish' expand("~")<CR>
     nmap <buffer> <Esc> <Plug>(dirvish_quit)
     nnoremap <silent><buffer> . :call Toggle()<CR>
     nmap <buffer> m :execute "!echo" expand("%:p") . ">>" expand("~")."/.vim/.bookmark" <CR>
+
+    if !exists('b:saved_pos')
+        let b:saved_pos = {}
+    endif
+    autocmd BufLeave <buffer> call <SID>save_pos()
+endfunction
+
+function! s:save_pos()
+    let b:saved_pos[b:current_session] = line(".")
+endfunction
+
+let g:next_session = 0
+command! -nargs=1 StartDirvish call s:start_dirvish(<q-args>)
+function! s:start_dirvish(path)
+    let session = g:next_session
+    let g:next_session += 1
+    execute 'Dirvish' a:path
+    let b:current_session = session
 endfunction
 
 function! Toggle()
@@ -86,19 +106,32 @@ function! Toggle()
     execute l
 endfunction
 
+function! Back()
+    let session = b:current_session
+    let path = getline(".")
+    execute "normal \<Plug>(dirvish_up)"
+    let b:current_session = session
+endfunction
+
 function! Foward()
+    let path = getline(".")
     if isdirectory(getline("."))
-        execute "norm \<CR>"
+        call Open()
     endif
 endfunction
 
 function! Open()
-    let file = getline(".")
-    let ext = fnamemodify(file, ":e")
+    let session = b:current_session
+    let path = getline(".")
+    let ext = fnamemodify(path, ":e")
     if g:is_windows && match(ext, '\v^(pdf|xls[xm]?)$') >= 0
-        execute "!start" file
+        execute "!start" path
     else
-        call dirvish#open('edit', 0)
+        call dirvish#open('edit', '0')
+        let b:current_session = session
+        if has_key(b:saved_pos, session)
+            execute b:saved_pos[session]
+        endif
     end
 endfunction
 
