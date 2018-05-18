@@ -71,10 +71,11 @@ function! s:dirvish_init()
     nnoremap <silent><buffer> h :call Back()<CR>
     nnoremap <silent><buffer> l :call Foward()<CR>
     nnoremap <silent><buffer> <CR> :call Open()<CR>
-    nnoremap <silent><buffer> ~ :execute 'Dirvish' expand("~")<CR>
+    nnoremap <silent><buffer> ~ :execute 'StartDirvish' expand("~")<CR>
     nmap <buffer> <Esc> <Plug>(dirvish_quit)
     nnoremap <silent><buffer> . :call Toggle()<CR>
     nmap <buffer> m :execute "!echo" expand("%:p") . ">>" expand("~")."/.vim/.bookmark" <CR>
+    nmap <buffer> b :call Bookmark()<CR>
 
     if !exists('b:saved_pos')
         let b:saved_pos = {}
@@ -106,6 +107,31 @@ function! Toggle()
     execute l
 endfunction
 
+let g:bookmark_file_path = $HOME . '/.vim/.bookmark'
+function! Bookmark()
+    let temp_dir = tempname()
+    call mkdir(temp_dir, 'p')
+    let session = b:current_session
+    let from_path = expand('%')
+    execute 'Dirvish' temp_dir
+    let b:from_path = from_path
+    let b:current_session = session
+    nnoremap <buffer> h :call Return()<CR>
+    execute 'read' g:bookmark_file_path
+    v/\S/d
+    sort u
+    execute 'w' g:bookmark_file_path
+endfunction
+
+function! Return()
+    let session = b:current_session
+    execute 'Dirvish' b:from_path
+    let b:current_session = session
+    if exists('b:saved_pos') && has_key(b:saved_pos, session)
+        execute b:saved_pos[session]
+    endif
+endfunction
+
 function! Back()
     let session = b:current_session
     let path = getline(".")
@@ -114,22 +140,21 @@ function! Back()
 endfunction
 
 function! Foward()
-    let path = getline(".")
     if isdirectory(getline("."))
         call Open()
     endif
 endfunction
 
 function! Open()
-    let session = b:current_session
     let path = getline(".")
     let ext = fnamemodify(path, ":e")
     if g:is_windows && match(ext, '\v^(pdf|xls[xm]?)$') >= 0
         execute "!start" path
     else
+        let session = b:current_session
         call dirvish#open('edit', '0')
         let b:current_session = session
-        if has_key(b:saved_pos, session)
+        if exists('b:saved_pos') && has_key(b:saved_pos, session)
             execute b:saved_pos[session]
         endif
     end
@@ -203,12 +228,3 @@ function! s:start_shell()
 endfunction
 command! StartShell call s:start_shell()
 nnoremap <Space>s :StartShell<CR>
-
-nnoremap <Space>m :execute 'vi' expand("~")."/.vim/.bookmark"<CR>:setlocal nomodifiable<CR>:set filetype=bookmark<CR>
-augroup bookmark_config
-    autocmd!
-    autocmd FileType bookmark silent! call s:bookmark_init()
-augroup END
-function! s:bookmark_init()
-    nnoremap <buffer> <CR> :Dirvish <cfile> <CR>
-endfunction
