@@ -74,12 +74,15 @@ function! s:dirvish_init()
     nnoremap <silent><buffer> ~ :execute 'StartDirvish' expand("~")<CR>
     nmap <buffer> <Esc> <Plug>(dirvish_quit)
     nnoremap <silent><buffer> . :call Toggle()<CR>
-    nmap <buffer> m :execute "!echo" expand("%:p") . ">>" expand("~")."/.vim/.bookmark" <CR>
+    nmap <buffer> a :execute "!echo" expand("%:p") . ">>" expand("~")."/.vim/.bookmark" <CR>
     nmap <buffer> b :call Bookmark()<CR>
+    nmap <silent><buffer> m :call MoveFile()<CR>
 
+    let w:operation = ''
     if !exists('b:saved_pos')
         let b:saved_pos = {}
     endif
+    autocmd BufEnter <buffer> if exists('w:from_path') | let w:operation = '' | endif
     autocmd BufLeave <buffer> let b:saved_pos[win_getid()] = line(".")
 endfunction
 
@@ -99,14 +102,37 @@ function! Toggle()
     execute l
 endfunction
 
+function! MoveFile()
+    if w:operation !=# ''
+        let error_file = tempname()
+        let to_path = expand("%") . fnamemodify(w:from_path, ":t")
+        let g:ret = system(join(["mv", w:from_path, to_path, '2>', error_file], ' '))
+        if v:shell_error == 0
+            let w:operation = ''
+            norm R
+            call search("^" . to_path . "$")
+        else
+            execute "split" error_file
+        endif
+    else
+        "TODO: empty_line
+        let w:operation = 'move'
+        let w:from_path = getline(".")
+    endif
+endfunction
+
 let g:bookmark_file_path = $HOME . '/.vim/.bookmark'
 function! Bookmark()
     let temp_dir = tempname()
     call mkdir(temp_dir, 'p')
-    let from_path = expand('%')
+    let jumped_from = expand('%')
+    let operation = w:operation
     execute 'Dirvish' temp_dir
-    let b:from_path = from_path
+    let w:operation = operation
+    let b:jumped_from = jumped_from
     nnoremap <buffer> h :call Return()<CR>
+    nnoremap <buffer> m <Nop>
+
     execute 'read' g:bookmark_file_path
     v/\S/d
     sort u
@@ -114,7 +140,9 @@ function! Bookmark()
 endfunction
 
 function! Return()
-    execute 'Dirvish' b:from_path
+    let operation = w:operation
+    execute 'Dirvish' b:jumped_from
+    let w:operation = operation
     let win_id = win_getid()
     if exists('b:saved_pos') && has_key(b:saved_pos, win_id)
         execute b:saved_pos[win_id]
@@ -122,8 +150,9 @@ function! Return()
 endfunction
 
 function! Back()
-    let path = getline(".")
+    let operation = w:operation
     execute "normal \<Plug>(dirvish_up)"
+    let w:operation = operation
 endfunction
 
 function! Foward()
@@ -138,7 +167,9 @@ function! Open()
     if g:is_windows && match(ext, '\v^(pdf|xls[xm]?)$') >= 0
         execute "!start" path
     else
+        let operation = w:operation
         call dirvish#open('edit', '0')
+        let w:operation = operation
         let win_id = win_getid()
         if exists('b:saved_pos') && has_key(b:saved_pos, win_id)
             execute b:saved_pos[win_id]
@@ -214,3 +245,13 @@ function! s:start_shell()
 endfunction
 command! StartShell call s:start_shell()
 nnoremap <Space>s :StartShell<CR>
+
+function! FileOperationStatus()
+    if &filetype ==# 'dirvish' && exists('w:operation') && w:operation !=# ''
+        return 'moving'
+    else
+        return ''
+    endif
+endfunction
+
+let g:airline_section_b = '%{FileOperationStatus()}'
