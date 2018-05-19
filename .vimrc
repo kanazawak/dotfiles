@@ -80,20 +80,12 @@ function! s:dirvish_init()
     if !exists('b:saved_pos')
         let b:saved_pos = {}
     endif
-    autocmd BufLeave <buffer> call <SID>save_pos()
+    autocmd BufLeave <buffer> let b:saved_pos[win_getid()] = line(".")
 endfunction
 
-function! s:save_pos()
-    let b:saved_pos[b:current_session] = line(".")
-endfunction
-
-let g:next_session = 0
 command! -nargs=1 StartDirvish call s:start_dirvish(<q-args>)
 function! s:start_dirvish(path)
-    let session = g:next_session
-    let g:next_session += 1
     execute 'Dirvish' a:path
-    let b:current_session = session
 endfunction
 
 function! Toggle()
@@ -111,11 +103,9 @@ let g:bookmark_file_path = $HOME . '/.vim/.bookmark'
 function! Bookmark()
     let temp_dir = tempname()
     call mkdir(temp_dir, 'p')
-    let session = b:current_session
     let from_path = expand('%')
     execute 'Dirvish' temp_dir
     let b:from_path = from_path
-    let b:current_session = session
     nnoremap <buffer> h :call Return()<CR>
     execute 'read' g:bookmark_file_path
     v/\S/d
@@ -124,19 +114,16 @@ function! Bookmark()
 endfunction
 
 function! Return()
-    let session = b:current_session
     execute 'Dirvish' b:from_path
-    let b:current_session = session
-    if exists('b:saved_pos') && has_key(b:saved_pos, session)
-        execute b:saved_pos[session]
+    let win_id = win_getid()
+    if exists('b:saved_pos') && has_key(b:saved_pos, win_id)
+        execute b:saved_pos[win_id]
     endif
 endfunction
 
 function! Back()
-    let session = b:current_session
     let path = getline(".")
     execute "normal \<Plug>(dirvish_up)"
-    let b:current_session = session
 endfunction
 
 function! Foward()
@@ -151,11 +138,10 @@ function! Open()
     if g:is_windows && match(ext, '\v^(pdf|xls[xm]?)$') >= 0
         execute "!start" path
     else
-        let session = b:current_session
         call dirvish#open('edit', '0')
-        let b:current_session = session
-        if exists('b:saved_pos') && has_key(b:saved_pos, session)
-            execute b:saved_pos[session]
+        let win_id = win_getid()
+        if exists('b:saved_pos') && has_key(b:saved_pos, win_id)
+            execute b:saved_pos[win_id]
         endif
     end
 endfunction
