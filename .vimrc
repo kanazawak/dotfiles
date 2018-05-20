@@ -76,7 +76,8 @@ function! s:dirvish_init()
     nnoremap <silent><buffer> . :call Toggle()<CR>
     nmap <buffer> a :execute "!echo" expand("%:p") . ">>" expand("~")."/.vim/.bookmark" <CR>
     nmap <buffer> b :call Bookmark()<CR>
-    nmap <silent><buffer> m :call MoveFile()<CR>
+    nmap <silent><buffer> m :call StartOperation('move')<CR>
+    nmap <silent><buffer> v :call MoveFile()<CR>
 
     let w:operation = ''
     if !exists('b:saved_pos')
@@ -102,22 +103,35 @@ function! Toggle()
     execute l
 endfunction
 
-function! MoveFile()
+function! StartOperation(operation)
     if w:operation !=# ''
-        let error_file = tempname()
-        let to_path = expand("%") . fnamemodify(w:from_path, ":t")
-        let g:ret = system(join(["mv", w:from_path, to_path, '2>', error_file], ' '))
-        if v:shell_error == 0
-            let w:operation = ''
-            norm R
-            call search("^" . to_path . "$")
-        else
-            execute "split" error_file
-        endif
-    else
-        "TODO: empty_line
-        let w:operation = 'move'
+        let w:operation = ''
+    elseif getline(".") != ''
+        let w:operation = a:operation
         let w:from_path = getline(".")
+    endif
+endfunction
+
+function! MoveFile()
+    if w:operation ==# 'move'
+        let to_path = expand("%") . fnamemodify(w:from_path, ":t")
+        if g:is_windows
+            let cmd = join(['move "', w:from_path, '" "', to_path, '"'], '')
+            execute "!" cmd
+            norm R
+            call search(to_path)
+        else
+            let error_file = tempname()
+            let cmd = join(["mv", w:from_path, to_path, '2>', error_file], ' ')
+            call system(cmd)
+            if v:shell_error == 0
+                let w:operation = ''
+                norm R
+                call search("^" . to_path . "$")
+            else
+                execute "split" error_file
+            endif
+        endif
     endif
 endfunction
 
@@ -248,7 +262,7 @@ nnoremap <Space>s :StartShell<CR>
 
 function! FileOperationStatus()
     if &filetype ==# 'dirvish' && exists('w:operation') && w:operation !=# ''
-        return 'moving'
+        return 'moving ' . w:from_path . ' to'
     else
         return ''
     endif
