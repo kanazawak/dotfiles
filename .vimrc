@@ -2,8 +2,8 @@ call plug#begin('~/.vim/plugged')
     Plug 'tpope/vim-endwise'
     Plug 'tomtom/tcomment_vim'
     Plug 'vim-airline/vim-airline'
-    Plug 'justinmk/vim-dirvish'
-    " Plug 'cocopon/vaffle.vim'
+    " Plug 'justinmk/vim-dirvish'
+    Plug 'cocopon/vaffle.vim'
     Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --all' }
     Plug 'junegunn/fzf.vim'
     Plug 'tpope/vim-surround'
@@ -37,8 +37,8 @@ nnoremap Y y$
 let g:is_windows = has('win32') || has ('win64')
 
 " File Explorer
-let s:file_explorer_command = 'StartDirvish'
-let s:file_explorer_file_type = 'dirvish'
+let s:file_explorer_command = 'Vaffle'
+let s:file_explorer_file_type = 'vaffle'
 function! StartExplorer()
     if g:is_windows && &filetype ==# s:file_explorer_file_type
         execute "!start" expand("%")
@@ -48,146 +48,82 @@ function! StartExplorer()
 endfunction
 noremap <silent> <Space>e :call StartExplorer()<CR>
 
-let sort = 'sort ,^.*[\/],'
-if g:is_windows
-    let hide = 'silent keeppatterns g@\v\\\.[^\\]+\\?$@d'
-else
-    let hide = 'silent keeppatterns g@\v/\.[^\/]+/?$@d'
-endif
-let go_top = 'norm gg'
-let g:mode_hide_sort = join ([sort, hide, go_top], ' | ')
-let g:mode_sort = join ([sort, go_top], ' | ')
-let g:dirvish_mode = g:mode_hide_sort
-augroup dirvish_config
+let g:vaffle_use_default_mappings = 0
+augroup vaffle_config
     autocmd!
-    autocmd FileType dirvish silent! call s:dirvish_init()
+    autocmd FileType vaffle silent! call s:vaffle_init()
 augroup END
 
-nmap <Plug>(nomap-dirvish_up) <Plug>(dirvish_up)
-function! s:dirvish_init()
-    unmap <buffer> q
-    unmap <buffer> /
-    unmap <buffer> ?
-    nnoremap <silent><buffer> h :call Back()<CR>
-    nnoremap <silent><buffer> l :call Foward()<CR>
+let g:bookmark_file_path = $HOME . '/.vim/.bookmark'
+
+function! s:vaffle_init()
+    nnoremap <silent><buffer> h :call GoBackward()<CR>
+    nnoremap <silent><buffer> l :call GoForward()<CR>
     nnoremap <silent><buffer> <CR> :call Open()<CR>
-    nnoremap <silent><buffer> ~ :execute 'StartDirvish' expand("~")<CR>
-    nmap <buffer> <Esc> <Plug>(dirvish_quit)
-    nnoremap <silent><buffer> . :call Toggle()<CR>
-    nmap <buffer> a :execute "!echo" expand("%:p") . ">>" expand("~")."/.vim/.bookmark" <CR>
-    nmap <buffer> b :call Bookmark()<CR>
-    nmap <silent><buffer> m :call StartOperation('move')<CR>
-    nmap <silent><buffer> v :call MoveFile()<CR>
+    nmap <silent><buffer> <Esc> <Plug>(vaffle-quit)
+    nmap <silent><buffer> <C-^> <Plug>(vaffle-open-home)
+    " nmap <buffer> a :execute "!echo" expand("%:p") . ">>" g:bookmark_file_path <CR>
+    nmap <silent><buffer> b :call Bookmark()<CR>
+    " nmap <silent><buffer> m :call StartOperation('move')<CR>
+    " nmap <silent><buffer> v :call MoveFile()<CR>
 
-    let w:operation = ''
-    if !exists('b:saved_pos')
-        let b:saved_pos = {}
+    if exists("w:jumped_from")
+        unlet w:jumped_from
     endif
-    autocmd BufEnter <buffer> if exists('w:from_path') | let w:operation = '' | endif
-    autocmd BufLeave <buffer> let b:saved_pos[win_getid()] = line(".")
 endfunction
 
-command! -nargs=1 StartDirvish call s:start_dirvish(<q-args>)
-function! s:start_dirvish(path)
-    execute 'Dirvish' a:path
-endfunction
-
-function! Toggle()
-    let l = line(".")
-    if g:dirvish_mode ==# g:mode_sort
-        let g:dirvish_mode = g:mode_hide_sort
+function! GoBackward()
+    if exists("w:jumped_from")
+        execute "Vaffle" w:jumped_from
+        unlet w:jumped_from
     else
-        let g:dirvish_mode = g:mode_sort
-    endif
-    norm R
-    execute l
-endfunction
-
-function! StartOperation(operation)
-    if w:operation !=# ''
-        let w:operation = ''
-    elseif getline(".") != ''
-        let w:operation = a:operation
-        let w:from_path = getline(".")
-    endif
-endfunction
-
-function! MoveFile()
-    if w:operation ==# 'move'
-        let to_path = expand("%") . fnamemodify(w:from_path, ":t")
-        if g:is_windows
-            let cmd = join(['move "', w:from_path, '" "', to_path, '"'], '')
-            execute "!" cmd
-            norm R
-            call search(to_path)
-        else
-            let error_file = tempname()
-            let cmd = join(["mv", w:from_path, to_path, '2>', error_file], ' ')
-            call system(cmd)
-            if v:shell_error == 0
-                let w:operation = ''
-                norm R
-                call search("^" . to_path . "$")
-            else
-                execute "split" error_file
-            endif
+        let env = vaffle#buffer#get_env()
+        let parent_dir = fnameescape(fnamemodify(env.dir, ':h'))
+        if parent_dir !=# env.dir
+            execute "norm \<Plug>(vaffle-open-parent)"
         endif
     endif
 endfunction
 
-let g:bookmark_file_path = $HOME . '/.vim/.bookmark'
 function! Bookmark()
     let temp_dir = tempname()
     call mkdir(temp_dir, 'p')
-    let jumped_from = expand('%')
-    let operation = w:operation
-    execute 'Dirvish' temp_dir
-    let w:operation = operation
-    let b:jumped_from = jumped_from
-    nnoremap <buffer> h :call Return()<CR>
-    nnoremap <buffer> m <Nop>
-
+    let jumped_from = bufname('%')
+    execute 'Vaffle' temp_dir
+    let w:jumped_from = jumped_from
+    nnoremap <buffer> h :call Back()<CR>
+    nnoremap <buffer> l :Vaffle <cfile><CR>
+    setlocal modifiable
     execute 'read' g:bookmark_file_path
-    v/\S/d
+    1d
+    silent v/\S/d
     sort u
-    execute 'w' g:bookmark_file_path
+    execute 'w!' g:bookmark_file_path
+    setlocal nomodifiable
 endfunction
 
-function! Return()
-    let operation = w:operation
-    execute 'Dirvish' b:jumped_from
-    let w:operation = operation
-    let win_id = win_getid()
-    if exists('b:saved_pos') && has_key(b:saved_pos, win_id)
-        execute b:saved_pos[win_id]
+function! GoForward()
+    let env = vaffle#buffer#get_env()
+    if empty(env.items)
+        return
     endif
-endfunction
-
-function! Back()
-    let operation = w:operation
-    execute "normal \<Plug>(dirvish_up)"
-    let w:operation = operation
-endfunction
-
-function! Foward()
-    if isdirectory(getline("."))
-        call Open()
+    let path = env.items[line(".")-1].path
+    if isdirectory(path)
+        execute "norm \<Plug>(vaffle-open-selected)"
     endif
 endfunction
 
 function! Open()
-    let path = getline(".")
+    let env = vaffle#buffer#get_env()
+    if empty(env.items)
+        return
+    endif
+    let path = env.items[line(".")-1].path
     let ext = fnamemodify(path, ":e")
     if g:is_windows && match(ext, '\v^(pdf|xls[xm]?)$') >= 0
         execute "!start" path
     else
-        let operation = w:operation
-        call dirvish#open('edit', '0')
-        let w:operation = operation
-        let win_id = win_getid()
-        if exists('b:saved_pos') && has_key(b:saved_pos, win_id)
-            execute b:saved_pos[win_id]
-        endif
+        execute "norm \<Plug>(vaffle-open-selected)"
     end
 endfunction
 
@@ -259,13 +195,3 @@ function! s:start_shell()
 endfunction
 command! StartShell call s:start_shell()
 nnoremap <Space>s :StartShell<CR>
-
-function! FileOperationStatus()
-    if &filetype ==# 'dirvish' && exists('w:operation') && w:operation !=# ''
-        return 'moving ' . w:from_path . ' to'
-    else
-        return ''
-    endif
-endfunction
-
-let g:airline_section_b = '%{FileOperationStatus()}'
