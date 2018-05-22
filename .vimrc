@@ -1,6 +1,7 @@
 call plug#begin('~/.vim/plugged')
     Plug 'tpope/vim-endwise'
     Plug 'tpope/vim-commentary'
+    Plug 'godlygeek/tabular'
     Plug 'vim-airline/vim-airline'
     " Plug 'justinmk/vim-dirvish'
     Plug 'cocopon/vaffle.vim'
