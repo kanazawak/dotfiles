@@ -68,8 +68,11 @@ function! s:vaffle_init()
     " nmap <buffer> a :execute "!echo" expand("%:p") . ">>" g:bookmark_file_path <CR>
     nmap <silent><buffer> b :call Bookmark()<CR>
     nmap <silent><buffer> d <Plug>(vaffle-delete-selected)
-    " nmap <silent><buffer> m :call StartOperation('move')<CR>
-    " nmap <silent><buffer> v :call MoveFile()<CR>
+    vmap <silent><buffer> d <Plug>(vaffle-delete-selected)
+    nmap <silent><buffer> <Tab> <Plug>(vaffle-toggle-current)
+    nmap <silent><buffer> . <Plug>(vaffle-toggle-hidden)
+    nmap <silent><buffer> ~ <Plug>(vaffle-open-home)
+    nmap <silent><buffer> m <Plug>(vaffle-move-selected)
 
     if exists("w:jumped_from")
         unlet w:jumped_from
