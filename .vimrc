@@ -40,8 +40,11 @@ let g:is_windows = has('win32') || has ('win64')
 let s:file_explorer_command = 'Vaffle'
 let s:file_explorer_file_type = 'vaffle'
 function! StartExplorer()
-    if g:is_windows && &filetype ==# s:file_explorer_file_type
-        execute "!start" expand("%")
+    let env = vaffle#buffer#get_env()
+    if &filetype ==# s:file_explorer_file_type
+        if g:is_windows
+            execute "!start" env.dir
+        endif
     else
         execute s:file_explorer_command expand("%:p:h")
     endif
@@ -64,6 +67,7 @@ function! s:vaffle_init()
     nmap <silent><buffer> <C-^> <Plug>(vaffle-open-home)
     " nmap <buffer> a :execute "!echo" expand("%:p") . ">>" g:bookmark_file_path <CR>
     nmap <silent><buffer> b :call Bookmark()<CR>
+    nmap <silent><buffer> d <Plug>(vaffle-delete-selected)
     " nmap <silent><buffer> m :call StartOperation('move')<CR>
     " nmap <silent><buffer> v :call MoveFile()<CR>
 
@@ -75,7 +79,6 @@ endfunction
 function! GoBackward()
     if exists("w:jumped_from")
         execute "Vaffle" w:jumped_from
-        unlet w:jumped_from
     else
         let env = vaffle#buffer#get_env()
         let parent_dir = fnameescape(fnamemodify(env.dir, ':h'))
@@ -91,7 +94,6 @@ function! Bookmark()
     let jumped_from = bufname('%')
     execute 'Vaffle' temp_dir
     let w:jumped_from = jumped_from
-    nnoremap <buffer> h :call Back()<CR>
     nnoremap <buffer> l :Vaffle <cfile><CR>
     setlocal modifiable
     execute 'read' g:bookmark_file_path
@@ -188,7 +190,8 @@ endif
 
 function! s:start_shell()
     if &filetype ==# s:file_explorer_file_type
-        call term_start('bash', {'term_finish': 'close', 'cwd': expand("%")})
+        let env = vaffle#buffer#get_env()
+        call term_start('bash', {'term_finish': 'close', 'cwd': env.dir})
     else
         ter
     endif
