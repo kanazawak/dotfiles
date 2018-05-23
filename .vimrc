@@ -74,10 +74,55 @@ function! s:vaffle_init()
     nmap <silent><buffer> . <Plug>(vaffle-toggle-hidden)
     nmap <silent><buffer> ~ <Plug>(vaffle-open-home)
     nmap <silent><buffer> m <Plug>(vaffle-move-selected)
+    nmap <silent><buffer> f :call FindChar(1)<CR>
+    nmap <silent><buffer> F :call FindChar(-1)<CR>
+    nmap <silent><buffer> ; :call RepeatFindChar(1)<CR>
+    nmap <silent><buffer> , :call RepeatFindChar(-1)<CR>
 
     if exists("w:jumped_from")
         unlet w:jumped_from
     endif
+endfunction
+
+function! JumpToChar(direction, char)
+    let env = vaffle#buffer#get_env()
+    if empty(env.items)
+        return
+    endif
+    let i = line(".")
+    let j = i + a:direction
+    while v:true
+        if j < 0 || j >= len(env.items)
+            let j = i
+            break
+        end
+        if env.items[j-1].basename[0] ==? a:char
+            break
+        endif
+        let j = j + a:direction
+    endwhile
+    execute j
+endfunction
+
+function! FindChar(direction)
+    let env = vaffle#buffer#get_env()
+    if empty(env.items)
+        return
+    endif
+    let char = getchar()
+    if type(char) == type(0)
+        let char = nr2char(char)
+    endif
+    call JumpToChar(a:direction, char)
+    let b:find_char_direction = a:direction
+    let b:find_char_target = char
+endfunction
+
+function! RepeatFindChar(direction)
+    if !exists("b:find_char_direction") || !exists("b:find_char_target")
+        return
+    endif
+    call JumpToChar(b:find_char_direction * a:direction, b:find_char_target)
 endfunction
 
 function! GoBackward()
