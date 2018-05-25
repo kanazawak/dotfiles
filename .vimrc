@@ -192,14 +192,16 @@ endtry
 nnoremap <Space>r :call ExecuteThisFile()<CR>
 
 function! s:find_file()
-    if &filetype ==# s:file_explorer_file_type
-        FZF %
+    let env = vaffle#buffer#get_env()
+    let dir = (&filetype ==# s:file_explorer_file_type ? env.dir : getcwd())
+    if g:is_windows
+        let source = printf("rg --files --hidden %s 2> nul", dir)
     else
-        FZF
+        let source = printf("rg --files --hidden %s", dir)
     endif
+    call fzf#run({"source": source , "sink": "edit", "down": "40%"})
 endfunction
-command! FindFile call s:find_file()
-nnoremap <Space>f :FindFile<CR>
+nnoremap <Space>f :call <SID>find_file()<CR>
 
 function! s:find_dir()
     if g:is_windows
