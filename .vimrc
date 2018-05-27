@@ -8,6 +8,7 @@ call plug#begin('~/.vim/plugged')
     Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --all' }
     Plug 'junegunn/fzf.vim'
     Plug 'tpope/vim-surround'
+    Plug 'mileszs/ack.vim'
 call plug#end()
 
 set backspace=indent,eol,start
@@ -204,6 +205,7 @@ endfunction
 nnoremap <Space>f :call <SID>find_file()<CR>
 
 function! s:find_dir()
+    let env = vaffle#buffer#get_env()
     if g:is_windows
         let cmd = 'dir'
         let opt = '/b /s/ ad'
@@ -213,7 +215,7 @@ function! s:find_dir()
     endif
 
     if &filetype ==# s:file_explorer_file_type
-        let dir = expand("%:p:h")
+        let dir = env.dir
     else
         let dir = '.'
     end
@@ -231,13 +233,12 @@ nnoremap <Space>h :History<CR>
 nnoremap <Space>b :Buffers<CR>
 nnoremap <Space>: :History:<CR>
 
-if executable('rg')
-    command! -bang -nargs=* Rg
-    \ call fzf#vim#grep(
-    \ 'rg --line-number --no-heading '.shellescape(<q-args>), 0,
-    \ fzf#vim#with_preview({'options': '--exact --reverse --delimiter : --nth 3..'}, 'right:50%:wrap'))
-    nnoremap <Space>g :Rg<CR>
-endif
+if g:is_windows
+    let g:ackprg = 'rg_wrapper.bat'
+else
+    let g:ackprg = 'rg -S --vimgrep'
+end
+nnoremap <Space>g :Ack!<Space>
 
 function! s:start_shell()
     if &filetype ==# s:file_explorer_file_type
