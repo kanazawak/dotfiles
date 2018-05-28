@@ -86,23 +86,21 @@ function! s:vaffle_init()
 endfunction
 
 function! JumpToChar(direction, char)
-    let env = vaffle#buffer#get_env()
-    if empty(env.items)
+    let items = vaffle#buffer#get_env().items
+    if empty(items)
         return
     endif
-    let i = line(".")
-    let j = i + a:direction
+    let j = line(".")
     while v:true
-        if j < 0 || j >= len(env.items)
-            let j = i
-            break
+        let j += a:direction
+        if j <= 0 || j > len(items)
+            return
         end
-        if env.items[j-1].basename[0] ==? a:char
+        if items[j-1].basename[0] ==? a:char
+            execute j
             break
         endif
-        let j = j + a:direction
     endwhile
-    execute j
 endfunction
 
 function! FindChar(direction)
@@ -155,25 +153,25 @@ function! Bookmark()
 endfunction
 
 function! GoForward()
-    let env = vaffle#buffer#get_env()
-    if empty(env.items)
+    let items = vaffle#buffer#get_env().items
+    if empty(items)
         return
     endif
-    let path = env.items[line(".")-1].path
-    if isdirectory(path)
+    if items[line(".")-1].is_dir
         execute "norm \<Plug>(vaffle-open-selected)"
     endif
 endfunction
 
 function! Open()
-    let env = vaffle#buffer#get_env()
-    if empty(env.items)
+    let items = vaffle#buffer#get_env().items
+    if empty(items)
         return
     endif
-    let path = env.items[line(".")-1].path
-    let ext = fnamemodify(path, ":e")
-    if g:is_windows && match(ext, '\v^(pdf|xls[xm]?)$') >= 0
-        execute "!start" path
+    let item = items[line(".")-1]
+    let ext = fnamemodify(item.path, ":e")
+    let associated = (match(ext, '\v^(pdf|xls[xm]?)$') >= 0)
+    if g:is_windows && !item.is_dir && associated
+        execute "!start" item.path
     else
         execute "norm \<Plug>(vaffle-open-selected)"
     end
@@ -196,6 +194,7 @@ function! s:find_file()
     let env = vaffle#buffer#get_env()
     let dir = (&filetype ==# s:file_explorer_file_type ? env.dir : getcwd())
     if g:is_windows
+        let dir = iconv(dir, &encoding, "cp932")
         let source = printf("rg --files --hidden %s 2> nul", dir)
     else
         let source = printf("rg --files --hidden %s", dir)
@@ -243,7 +242,7 @@ nnoremap <Space>g :Ack!<Space>
 function! s:start_shell()
     if &filetype ==# s:file_explorer_file_type
         let env = vaffle#buffer#get_env()
-        call term_start('bash', {'term_finish': 'close', 'cwd': env.dir})
+        call term_start(&shell, {'term_finish': 'close', 'cwd': env.dir})
     else
         ter
     endif
