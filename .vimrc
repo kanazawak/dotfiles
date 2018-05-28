@@ -14,7 +14,6 @@ call plug#end()
 set backspace=indent,eol,start
 syntax enable
 colorscheme desert
-set foldmethod=syntax
 set number
 set cursorline
 set smartindent
@@ -232,12 +231,29 @@ nnoremap <Space>h :History<CR>
 nnoremap <Space>b :Buffers<CR>
 nnoremap <Space>: :History:<CR>
 
+let g:ack_mappings = {}
 if g:is_windows
     let g:ackprg = 'rg_wrapper.bat'
 else
     let g:ackprg = 'rg -S --vimgrep'
 end
-nnoremap <Space>g :Ack!<Space>
+nnoremap <Space>g :Rg<Space>
+command! -nargs=1 Rg call s:rg(<f-args>)
+function! s:rg(str)
+    if &filetype ==# s:file_explorer_file_type
+        let env = vaffle#buffer#get_env()
+        execute "Ack" a:str env.dir
+        execute "normal \<CR>"
+    else
+        execute "Ack" a:str
+        execute "normal \<CR>"
+    endif
+endfunction
+
+nnoremap [q :cprevious<CR>
+nnoremap [[q :cpfile<CR>
+nnoremap ]q :cnext<CR>
+nnoremap ]]q :cnfile<CR>
 
 function! s:start_shell()
     if &filetype ==# s:file_explorer_file_type
