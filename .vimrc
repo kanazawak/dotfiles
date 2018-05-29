@@ -8,6 +8,7 @@ call plug#begin('~/.vim/plugged')
     Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --all' }
     Plug 'junegunn/fzf.vim'
     Plug 'tpope/vim-surround'
+    Plug 'tpope/vim-repeat'
     Plug 'mileszs/ack.vim'
 call plug#end()
 
@@ -219,31 +220,6 @@ function! s:find_file()
 endfunction
 nnoremap <Space>f :call <SID>find_file()<CR>
 
-function! s:find_dir()
-    let env = vaffle#buffer#get_env()
-    if g:is_windows
-        let cmd = 'dir'
-        let opt = '/b /s/ ad'
-    else
-        let cmd = 'find'
-        let opt = '-type d'
-    endif
-
-    if &filetype ==# s:file_explorer_file_type
-        let dir = env.dir
-    else
-        let dir = '.'
-    end
-
-    call fzf#run({
-        \ 'source': join([cmd, dir, opt], ' '),
-        \ 'sink': s:file_explorer_command,
-        \ 'down': '40%',
-        \})
-endfunction
-command! FindDir call s:find_dir()
-nnoremap <Space>d :FindDir<CR>
-
 nnoremap <Space>h :History<CR>
 nnoremap <Space>b :Buffers<CR>
 nnoremap <Space>: :History:<CR>
@@ -282,7 +258,3 @@ function! s:start_shell()
 endfunction
 command! StartShell call s:start_shell()
 nnoremap <Space>s :StartShell<CR>
-
-if filereadable(expand("~/.vimrc.local"))
-    source ~/.vimrc.local
-endif
