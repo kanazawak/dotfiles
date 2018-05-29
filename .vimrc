@@ -167,13 +167,30 @@ function! Open()
         return
     endif
     let item = items[line(".")-1]
-    let ext = fnamemodify(item.path, ":e")
-    let associated = (match(ext, '\v^(pdf|xls[xm]?)$') >= 0)
-    if g:is_windows && !item.is_dir && associated
-        execute "!start" item.path
-    else
+    if item.is_dir
         execute "norm \<Plug>(vaffle-open-selected)"
+    else
+        execute 'OpenFile' item.path
+    endif
+endfunction
+
+command! -nargs=1 OpenFile :call s:open_file(<f-args>)
+function! s:open_file(path)
+    let ext = fnamemodify(a:path, ":e")
+    if g:is_windows
+        if ext =~# '\v^(pdf|xls[xm]?)$'
+            execute "silent !start" a:path
+            redraw!
+            return
+        endif
+    elseif has('mac')
+        if ext =~# '\v^(pdf)$'
+            execute "silent !open" a:path
+            redraw!
+            return
+        endif
     end
+    execute 'edit' a:path
 endfunction
 
 try
@@ -198,7 +215,7 @@ function! s:find_file()
     else
         let source = printf("rg --files --hidden %s", dir)
     endif
-    call fzf#run({"source": source , "sink": "edit", "down": "40%"})
+    call fzf#run({"source": source , "sink": "OpenFile", "down": "40%"})
 endfunction
 nnoremap <Space>f :call <SID>find_file()<CR>
 
