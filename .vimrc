@@ -265,3 +265,7 @@ function! s:start_shell()
 endfunction
 command! StartShell call s:start_shell()
 nnoremap <Space>s :StartShell<CR>
+
+if filereadable(expand("~/.vimrc.local"))
+    source ~/.vimrc.local
+endif
