@@ -67,8 +67,8 @@ function! s:vaffle_init()
     nnoremap <silent><buffer> <CR> :call Open()<CR>
     nmap <silent><buffer> <Esc> <Plug>(vaffle-quit)
     nmap <silent><buffer> <C-^> <Plug>(vaffle-open-home)
-    " nmap <buffer> a :execute "!echo" expand("%:p") . ">>" g:bookmark_file_path <CR>
-    nmap <silent><buffer> b :call Bookmark()<CR>
+    nmap <silent><buffer> a :call AddBookmark()<CR>
+    nmap <silent><buffer> b :call ShowBookmark()<CR>
     nmap <silent><buffer> d <Plug>(vaffle-delete-selected)
     vmap <silent><buffer> d <Plug>(vaffle-delete-selected)
     nmap <silent><buffer> <Tab> <Plug>(vaffle-toggle-current)
@@ -136,7 +136,14 @@ function! GoBackward()
     endif
 endfunction
 
-function! Bookmark()
+function! AddBookmark()
+    let env = vaffle#buffer#get_env()
+    silent execute "!echo" env.dir ">>" g:bookmark_file_path
+    redraw!
+    echo "added to bookmark list"
+endfunction
+
+function! ShowBookmark()
     let temp_dir = tempname()
     call mkdir(temp_dir, 'p')
     let jumped_from = bufname('%')
@@ -258,3 +265,7 @@ function! s:start_shell()
 endfunction
 command! StartShell call s:start_shell()
 nnoremap <Space>s :StartShell<CR>
+
+if filereadable(expand("~/.vimrc.local"))
+    source ~/.vimrc.local
+endif
