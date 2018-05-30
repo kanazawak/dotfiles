@@ -79,6 +79,8 @@ function! s:vaffle_init()
     nmap <silent><buffer> F :call FindChar(-1)<CR>
     nmap <silent><buffer> ; :call RepeatFindChar(1)<CR>
     nmap <silent><buffer> , :call RepeatFindChar(-1)<CR>
+    nmap <silent><buffer> R <Plug>(vaffle-refresh)
+    nmap <silent><buffer> o <Plug>(vaffle-new-file)
 
     if exists("w:jumped_from")
         unlet w:jumped_from
@@ -156,8 +158,9 @@ function! GoForward()
     if empty(items)
         return
     endif
-    if items[line(".")-1].is_dir
-        execute "norm \<Plug>(vaffle-open-selected)"
+    let item = items[line(".")-1]
+    if item.is_dir
+        call vaffle#open_current('edit')
     endif
 endfunction
 
@@ -168,7 +171,7 @@ function! Open()
     endif
     let item = items[line(".")-1]
     if item.is_dir
-        execute "norm \<Plug>(vaffle-open-selected)"
+        call vaffle#open_current('edit')
     else
         execute 'OpenFile' item.path
     endif
