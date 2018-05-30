@@ -87,9 +87,6 @@ endfunction
 
 function! JumpToChar(direction, char)
     let items = vaffle#buffer#get_env().items
-    if empty(items)
-        return
-    endif
     let j = line(".")
     while v:true
         let j += a:direction
@@ -104,10 +101,6 @@ function! JumpToChar(direction, char)
 endfunction
 
 function! FindChar(direction)
-    let env = vaffle#buffer#get_env()
-    if empty(env.items)
-        return
-    endif
     let char = getchar()
     if type(char) == type(0)
         let char = nr2char(char)
@@ -118,10 +111,9 @@ function! FindChar(direction)
 endfunction
 
 function! RepeatFindChar(direction)
-    if !exists("b:find_char_direction") || !exists("b:find_char_target")
-        return
+    if exists("b:find_char_direction") && exists("b:find_char_target")
+        call JumpToChar(b:find_char_direction * a:direction, b:find_char_target)
     endif
-    call JumpToChar(b:find_char_direction * a:direction, b:find_char_target)
 endfunction
 
 function! GoBackward()
@@ -131,7 +123,7 @@ function! GoBackward()
         let env = vaffle#buffer#get_env()
         let parent_dir = fnameescape(fnamemodify(env.dir, ':h'))
         if parent_dir !=# env.dir
-            execute "norm \<Plug>(vaffle-open-parent)"
+            call vaffle#open(parent_dir)
         endif
     endif
 endfunction
@@ -260,7 +252,7 @@ function! s:start_shell()
         let env = vaffle#buffer#get_env()
         call term_start(&shell, {'term_finish': 'close', 'cwd': env.dir})
     else
-        ter
+        call term_start(&shell, {'term_finish': 'close', 'cwd': expand("%:p:h")})
     endif
 endfunction
 command! StartShell call s:start_shell()
