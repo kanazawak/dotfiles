@@ -132,8 +132,9 @@ endfunction
 
 function! AddBookmark()
     let env = vaffle#buffer#get_env()
-    silent execute "!echo" env.dir ">>" g:bookmark_file_path
-    redraw!
+    execute 'redir >>' g:bookmark_file_path
+        echo env.dir
+    redir END
     echo "added to bookmark list"
 endfunction
 
@@ -202,7 +203,7 @@ try
         if &filetype ==# 'vim'
             source %
         else
-            !%
+            execute '!' expand("%:p")
         endif
     endfunction
 catch
