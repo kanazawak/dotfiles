@@ -94,22 +94,28 @@ function! s:vaffle_init()
     endif
 endfunction
 
-function! MovePut()
+function! CursorItem()
     let items = vaffle#buffer#get_env().items
     if empty(items)
-        return
+        return []
+    else
+        return [items[line(".")-1]]
     endif
-    let item = items[line(".")-1]
+endfunction
+
+function! MovePut()
     let from_winnr = winnr()
-    for to_winnr in FindOtherVaffle()
-        execute to_winnr . 'wincmd w'
-        let to_path = vaffle#buffer#get_env().dir . '/' . item.basename
-        call rename(item.path, to_path)
-        call vaffle#refresh()
-        call search('\V' . item.basename)
-        execute from_winnr . 'wincmd w'
-        execute item.index + 1
-    endfo
+    for item in CursorItem()
+        for to_winnr in FindOtherVaffle()
+            execute to_winnr . 'wincmd w'
+            let to_path = vaffle#buffer#get_env().dir . '/' . item.basename
+            call rename(item.path, to_path)
+            call vaffle#refresh()
+            call search('\V' . item.basename)
+            execute from_winnr . 'wincmd w'
+            execute item.index + 1
+        endfor
+    endfor
 endfunction
 
 function! MoveObtain()
@@ -117,7 +123,12 @@ function! MoveObtain()
     let to_path = b:vaffle.dir
     for from_winnr in FindOtherVaffle()
         execute from_winnr . 'wincmd w'
-        let item = vaffle#buffer#get_env().items[line(".")-1]
+        let items = vaffle#buffer#get_env().items
+        if empty(items)
+            execute to_winnr . 'wincmd w'
+            return
+        endif
+        let item = items[line(".")-1]
         let to_path .= '/' . item.basename
         call rename(item.path, to_path)
         call vaffle#refresh()
@@ -208,27 +219,21 @@ function! ShowBookmark()
 endfunction
 
 function! GoForward()
-    let items = vaffle#buffer#get_env().items
-    if empty(items)
-        return
-    endif
-    let item = items[line(".")-1]
-    if item.is_dir
-        call vaffle#open_current('edit')
-    endif
+    for item in CursorItem()
+        if item.is_dir
+            call vaffle#open_current('edit')
+        endif
+    endfor
 endfunction
 
 function! Open()
-    let items = vaffle#buffer#get_env().items
-    if empty(items)
-        return
-    endif
-    let item = items[line(".")-1]
-    if item.is_dir
-        call vaffle#open_current('edit')
-    else
-        execute 'OpenFile' item.path
-    endif
+    for item in CursorItem()
+        if item.is_dir
+            call vaffle#open_current('edit')
+        else
+            execute 'OpenFile' item.path
+        endif
+    endfor
 endfunction
 
 command! -nargs=1 OpenFile :call s:open_file(<f-args>)
