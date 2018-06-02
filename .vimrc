@@ -85,6 +85,10 @@ function! s:vaffle_init()
     nmap <silent><buffer> mp :call MovePut()<CR>
     nmap <silent><buffer> mo :call MoveObtain()<CR>
 
+    augroup SaveCursor
+        autocmd! BufLeave <buffer> call vaffle#refresh()
+    augroup END
+
     if exists("w:jumped_from")
         unlet w:jumped_from
     endif
@@ -97,49 +101,43 @@ function! MovePut()
     endif
     let item = items[line(".")-1]
     let from_winnr = winnr()
-    let to_path = []
-    for winnr in range(1, winnr('$'))
-        let bufnr = tabpagebuflist()[winnr-1]
-        if winnr != from_winnr && getbufvar(bufnr, '&filetype') == 'vaffle'
-            call add(to_path, getbufvar(bufnr, 'vaffle').dir . '/' . item.basename)
-            let to_winnr = winnr
-        endif
-    endfor
-    if len(to_path) == 1
-        call rename(item.path, to_path[0])
+    for to_winnr in FindOtherVaffle()
         execute to_winnr . 'wincmd w'
+        let to_path = vaffle#buffer#get_env().dir . '/' . item.basename
+        call rename(item.path, to_path)
+        call vaffle#refresh()
         call search('\V' . item.basename)
         execute from_winnr . 'wincmd w'
         execute item.index + 1
-    endif
+    endfo
 endfunction
 
 function! MoveObtain()
     let to_winnr = winnr()
-    let from_path = []
     let to_path = b:vaffle.dir
-    set eventignore=BufEnter
+    for from_winnr in FindOtherVaffle()
+        execute from_winnr . 'wincmd w'
+        let item = vaffle#buffer#get_env().items[line(".")-1]
+        let to_path .= '/' . item.basename
+        call rename(item.path, to_path)
+        call vaffle#refresh()
+        execute item.index + 1
+        execute to_winnr . 'wincmd w'
+        call search('\V' . item.basename)
+    endfor
+endfunction
+
+function! FindOtherVaffle()
+    let wins = []
+    let curr_winnr = winnr()
     for winnr in range(1, winnr('$'))
         execute winnr . 'wincmd w'
-        let bufnr = tabpagebuflist()[winnr-1]
-        if winnr != to_winnr && &filetype == 'vaffle' && !empty(b:vaffle.items)
-            let item = b:vaffle.items[line(".")-1]
-            call add(from_path, item.path)
-            let to_path = to_path . '/' . item.basename
-            let from_winnr = winnr
+        if winnr != curr_winnr && &filetype == 'vaffle'
+            call add(wins, winnr)
         endif
     endfor
-    if len(from_path) == 1
-        execute from_winnr . 'wincmd w'
-        let l = line(".")
-        call rename(from_path[0], to_path)
-        call vaffle#refresh()
-        execute l
-        execute to_winnr . 'wincmd w'
-        call vaffle#refresh()
-        call search('\V' . item.basename)
-    endif
-    set eventignore=
+    execute winnr . 'wincmd w'
+    return len(wins) == 1 ? wins : []
 endfunction
 
 function! JumpToChar(direction, char)
