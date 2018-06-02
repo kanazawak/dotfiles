@@ -123,18 +123,15 @@ function! MoveObtain()
     let to_path = b:vaffle.dir
     for from_winnr in FindOtherVaffle()
         execute from_winnr . 'wincmd w'
-        let items = vaffle#buffer#get_env().items
-        if empty(items)
+        for item in CursorItem()
+            let to_path .= '/' . item.basename
+            call rename(item.path, to_path)
+            call vaffle#refresh()
+            execute item.index + 1
             execute to_winnr . 'wincmd w'
-            return
-        endif
-        let item = items[line(".")-1]
-        let to_path .= '/' . item.basename
-        call rename(item.path, to_path)
-        call vaffle#refresh()
-        execute item.index + 1
+            call search('\V' . item.basename)
+        endfor
         execute to_winnr . 'wincmd w'
-        call search('\V' . item.basename)
     endfor
 endfunction
 
