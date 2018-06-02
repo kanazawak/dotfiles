@@ -25,7 +25,6 @@ set expandtab
 set tabstop=4
 set shiftwidth=4
 set softtabstop=0
-
 set smartcase
 set incsearch
 set hlsearch
@@ -86,7 +85,7 @@ function! s:vaffle_init()
     nmap <silent><buffer> mo :call MoveObtain()<CR>
 
     augroup SaveCursor
-        autocmd! BufLeave <buffer> call vaffle#refresh()
+        autocmd! BufLeave <buffer> for item in CursorItem() | call vaffle#buffer#save_cursor(item) | endfor
     augroup END
 
     if exists("w:jumped_from")
