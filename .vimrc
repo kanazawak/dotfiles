@@ -74,7 +74,7 @@ function! s:vaffle_init()
     nmap <silent><buffer> <Tab> <Plug>(vaffle-toggle-current)
     nmap <silent><buffer> . <Plug>(vaffle-toggle-hidden)
     nmap <silent><buffer> ~ <Plug>(vaffle-open-home)
-    nmap <silent><buffer> m <Plug>(vaffle-move-selected)
+    nmap <silent><buffer> mv <Plug>(vaffle-move-selected)
     nmap <silent><buffer> f :call FindChar(1)<CR>
     nmap <silent><buffer> F :call FindChar(-1)<CR>
     nmap <silent><buffer> ; :call RepeatFindChar(1)<CR>
@@ -82,8 +82,34 @@ function! s:vaffle_init()
     nmap <silent><buffer> R <Plug>(vaffle-refresh)
     nmap <silent><buffer> o <Plug>(vaffle-new-file)
 
+    nmap <silent><buffer> mp :call MovePut()<CR>
+
     if exists("w:jumped_from")
         unlet w:jumped_from
+    endif
+endfunction
+
+function! MovePut()
+    let items = vaffle#buffer#get_env().items
+    if empty(items)
+        return
+    endif
+    let item = items[line(".")-1]
+    let from_winnr = winnr()
+    let to_path = []
+    for winnr in range(1, winnr('$'))
+        let bufnr = tabpagebuflist()[winnr-1]
+        if winnr != from_winnr && getbufvar(bufnr, '&filetype') == 'vaffle'
+            call add(to_path, getbufvar(bufnr, 'vaffle').dir . '/' . item.basename)
+            let to_winnr = winnr
+        endif
+    endfor
+    if len(to_path) == 1
+        call rename(item.path, to_path[0])
+        execute to_winnr . 'wincmd w'
+        call search('\V' . item.basename)
+        execute from_winnr . 'wincmd w'
+        execute item.index + 1
     endif
 endfunction
 
