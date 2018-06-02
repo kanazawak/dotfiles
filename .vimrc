@@ -83,6 +83,7 @@ function! s:vaffle_init()
     nmap <silent><buffer> o <Plug>(vaffle-new-file)
 
     nmap <silent><buffer> mp :call MovePut()<CR>
+    nmap <silent><buffer> mo :call MoveObtain()<CR>
 
     if exists("w:jumped_from")
         unlet w:jumped_from
@@ -111,6 +112,34 @@ function! MovePut()
         execute from_winnr . 'wincmd w'
         execute item.index + 1
     endif
+endfunction
+
+function! MoveObtain()
+    let to_winnr = winnr()
+    let from_path = []
+    let to_path = b:vaffle.dir
+    set eventignore=BufEnter
+    for winnr in range(1, winnr('$'))
+        execute winnr . 'wincmd w'
+        let bufnr = tabpagebuflist()[winnr-1]
+        if winnr != to_winnr && &filetype == 'vaffle' && !empty(b:vaffle.items)
+            let item = b:vaffle.items[line(".")-1]
+            call add(from_path, item.path)
+            let to_path = to_path . '/' . item.basename
+            let from_winnr = winnr
+        endif
+    endfor
+    if len(from_path) == 1
+        execute from_winnr . 'wincmd w'
+        let l = line(".")
+        call rename(from_path[0], to_path)
+        call vaffle#refresh()
+        execute l
+        execute to_winnr . 'wincmd w'
+        call vaffle#refresh()
+        call search('\V' . item.basename)
+    endif
+    set eventignore=
 endfunction
 
 function! JumpToChar(direction, char)
