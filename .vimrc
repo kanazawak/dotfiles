@@ -81,8 +81,10 @@ function! s:vaffle_init()
     nmap <silent><buffer> R <Plug>(vaffle-refresh)
     nmap <silent><buffer> o <Plug>(vaffle-new-file)
 
-    nmap <silent><buffer> mp :call MovePut()<CR>
-    nmap <silent><buffer> mo :call MoveObtain()<CR>
+    nmap <silent><buffer> mp :call OperateFilePut('move')<CR>
+    nmap <silent><buffer> mo :call OperateFileObtain('move')<CR>
+    nmap <silent><buffer> cp :call OperateFilePut('copy')<CR>
+    nmap <silent><buffer> co :call OperateFileObtain('copy')<CR>
 
     augroup SaveCursor
         autocmd! BufLeave <buffer> for item in CursorItem() | call vaffle#buffer#save_cursor(item) | endfor
@@ -102,7 +104,7 @@ function! CursorItem()
     endif
 endfunction
 
-function! MoveFile(from_winnr, to_winnr)
+function! OperateFile(from_winnr, to_winnr, operation)
     let curr_winnr = winnr()
     execute a:from_winnr . 'wincmd w'
     for item in CursorItem()
@@ -110,8 +112,10 @@ function! MoveFile(from_winnr, to_winnr)
         let to_path = vaffle#buffer#get_env().dir . '/' . item.basename
         if filereadable(to_path) || isdirectory(to_path)
             echoerr 'File exists.'
+        elseif a:operation ==# 'copy' && item.is_dir
+            echoerr "Can\'t copy directory."
         else
-            call rename(item.path, to_path)
+            call ExecOperation(item.path, to_path, a:operation)
             call vaffle#refresh()
             call search('\V' . item.basename)
             execute a:from_winnr . 'wincmd w'
@@ -121,17 +125,29 @@ function! MoveFile(from_winnr, to_winnr)
     execute curr_winnr . 'wincmd w'
 endfunction
 
-function! MoveFilePut()
+function! ExecOperation(from_path, to_path, operation)
+    if a:operation ==# 'move'
+        call rename(a:from_path, a:to_path)
+    elseif a:operation ==# 'copy' && g:is_windows
+        silent execute '!copy' shellescpace(a:from_path) shellescpace(a:to_path)
+        redraw!
+    elseif a:operation ==# 'copy'
+        silent execute '!cp' shellescpace(a:from_path) shellescpace(a:to_path)
+        redraw!
+    end
+endfunction
+
+function! OperateFilePut(operation)
     let from_winnr = winnr()
     for to_winnr in FindOtherVaffle()
-        call MoveFile(from_winnr, to_winnr)
+        call OperateFile(from_winnr, to_winnr, a:operation)
     endfor
 endfunction
 
-function! MoveFileObtain()
+function! OperateFileObtain(operation)
     let to_winnr = winnr()
     for from_winnr in FindOtherVaffle()
-        call MoveFile(from_winnr, to_winnr)
+        call OperateFile(from_winnr, to_winnr, a:operation)
     endfor
 endfunction
 
