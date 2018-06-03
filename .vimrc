@@ -102,35 +102,36 @@ function! CursorItem()
     endif
 endfunction
 
-function! MovePut()
-    let from_winnr = winnr()
+function! MoveFile(from_winnr, to_winnr)
+    let curr_winnr = winnr()
+    execute a:from_winnr . 'wincmd w'
     for item in CursorItem()
-        for to_winnr in FindOtherVaffle()
-            execute to_winnr . 'wincmd w'
-            let to_path = vaffle#buffer#get_env().dir . '/' . item.basename
+        execute a:to_winnr . 'wincmd w'
+        let to_path = vaffle#buffer#get_env().dir . '/' . item.basename
+        if filereadable(to_path) || isdirectory(to_path)
+            echoerr 'File exists.'
+        else
             call rename(item.path, to_path)
             call vaffle#refresh()
             call search('\V' . item.basename)
-            execute from_winnr . 'wincmd w'
+            execute a:from_winnr . 'wincmd w'
             execute item.index + 1
-        endfor
+        endif
+    endfor
+    execute curr_winnr . 'wincmd w'
+endfunction
+
+function! MoveFilePut()
+    let from_winnr = winnr()
+    for to_winnr in FindOtherVaffle()
+        call MoveFile(from_winnr, to_winnr)
     endfor
 endfunction
 
-function! MoveObtain()
+function! MoveFileObtain()
     let to_winnr = winnr()
-    let to_path = b:vaffle.dir
     for from_winnr in FindOtherVaffle()
-        execute from_winnr . 'wincmd w'
-        for item in CursorItem()
-            let to_path .= '/' . item.basename
-            call rename(item.path, to_path)
-            call vaffle#refresh()
-            execute item.index + 1
-            execute to_winnr . 'wincmd w'
-            call search('\V' . item.basename)
-        endfor
-        execute to_winnr . 'wincmd w'
+        call MoveFile(from_winnr, to_winnr)
     endfor
 endfunction
 
@@ -143,7 +144,7 @@ function! FindOtherVaffle()
             call add(wins, winnr)
         endif
     endfor
-    execute winnr . 'wincmd w'
+    execute curr_winnr . 'wincmd w'
     return len(wins) == 1 ? wins : []
 endfunction
 
