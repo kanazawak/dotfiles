@@ -80,14 +80,17 @@ function! s:vaffle_init()
     nmap <silent><buffer> , :call RepeatFindChar(-1)<CR>
     nmap <silent><buffer> R <Plug>(vaffle-refresh)
     nmap <silent><buffer> o <Plug>(vaffle-new-file)
-
+    nmap <silent><buffer> O <Plug>(vaffle-mkdir)
+    nmap <silent><buffer> r <Plug>(vaffle-rename-selected)
     nmap <silent><buffer> mp :call OperateFilePut('move')<CR>
     nmap <silent><buffer> mo :call OperateFileObtain('move')<CR>
     nmap <silent><buffer> cp :call OperateFilePut('copy')<CR>
     nmap <silent><buffer> co :call OperateFileObtain('copy')<CR>
 
     augroup SaveCursor
-        autocmd! BufLeave <buffer> for item in CursorItem() | call vaffle#buffer#save_cursor(item) | endfor
+        autocmd! BufLeave <buffer> for item in CursorItem()
+                    \| call vaffle#buffer#save_cursor(item)
+                    \| endfor
     augroup END
 
     if exists("w:jumped_from")
