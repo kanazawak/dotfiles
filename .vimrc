@@ -132,10 +132,10 @@ function! ExecOperation(from_path, to_path, operation)
     if a:operation ==# 'move'
         call rename(a:from_path, a:to_path)
     elseif a:operation ==# 'copy' && g:is_windows
-        silent execute '!copy' shellescpace(a:from_path) shellescpace(a:to_path)
+        silent execute '!copy' shellescape(a:from_path) shellescape(a:to_path)
         redraw!
     elseif a:operation ==# 'copy'
-        silent execute '!cp' shellescpace(a:from_path) shellescpace(a:to_path)
+        silent execute '!cp' shellescape(a:from_path) shellescape(a:to_path)
         redraw!
     end
 endfunction
