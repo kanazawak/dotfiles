@@ -88,14 +88,30 @@ function! s:vaffle_init()
     nmap <silent><buffer> co :call OperateFileObtain('copy')<CR>
 
     augroup SaveCursor
-        autocmd! BufLeave <buffer> for item in CursorItem()
-                    \| call vaffle#buffer#save_cursor(item)
-                    \| endfor
+        autocmd!
+        autocmd BufLeave <buffer>
+            \  for item in CursorItem()
+            \| call vaffle#buffer#save_cursor(item)
+            \| endfor
     augroup END
 
     if exists("w:jumped_from")
         unlet w:jumped_from
     endif
+endfunction
+
+augroup DuplicateWhenSplitted
+    autocmd!
+    autocmd WinNew *
+        \  if &filetype ==# 'vaffle'
+        \|     call timer_start(0, 'Duplicate')
+        \| endif
+augroup END
+
+function! Duplicate(timer)
+    let l = line(".")
+    call vaffle#buffer#duplicate()
+    execute l
 endfunction
 
 function! CursorItem()
