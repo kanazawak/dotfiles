@@ -102,16 +102,15 @@ endfunction
 
 augroup DuplicateWhenSplitted
     autocmd!
-    autocmd WinNew *
-        \  if &filetype ==# 'vaffle'
-        \|     call timer_start(0, 'Duplicate')
-        \| endif
+    autocmd WinNew * call timer_start(0, 'Duplicate')
 augroup END
 
 function! Duplicate(timer)
-    let l = line(".")
-    call vaffle#buffer#duplicate()
-    execute l
+    if &filetype ==# 'vaffle'
+        let l = line(".")
+        call vaffle#buffer#duplicate()
+        execute l
+    endif
 endfunction
 
 function! CursorItem()
