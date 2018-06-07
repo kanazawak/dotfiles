@@ -86,6 +86,8 @@ function! s:vaffle_init()
     nmap <silent><buffer> mo :call OperateFileObtain('move')<CR>
     nmap <silent><buffer> cp :call OperateFilePut('copy')<CR>
     nmap <silent><buffer> co :call OperateFileObtain('copy')<CR>
+    nmap <silent><buffer> x <Plug>(vaffle-fill-cmdline)
+    nmap <silent><buffer> X :call FillCmdlineWithDir()<CR>
 
     augroup SaveCursor
         autocmd!
@@ -98,6 +100,13 @@ function! s:vaffle_init()
     if exists("w:jumped_from")
         unlet w:jumped_from
     endif
+endfunction
+
+function! FillCmdlineWithDir()
+  let env = vaffle#buffer#get_env()
+  let path = fnameescape(env.dir)
+  let cmdline =printf(": %s\<Home>", path)
+  call feedkeys(cmdline)
 endfunction
 
 augroup DuplicateWhenSplitted
