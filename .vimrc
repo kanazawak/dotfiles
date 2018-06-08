@@ -41,13 +41,22 @@ let g:is_windows = has('win32') || has ('win64')
 let s:file_explorer_command = 'Vaffle'
 let s:file_explorer_file_type = 'vaffle'
 function! StartExplorer()
-    let env = vaffle#buffer#get_env()
     if &filetype ==# s:file_explorer_file_type
         if g:is_windows
+            let env = vaffle#buffer#get_env()
             execute "!start" env.dir
         endif
     else
+        let basename = expand("%:t")
         execute s:file_explorer_command expand("%:p:h")
+        if basename =~# '\v^\.'
+            execute "normal \<Plug>(vaffle-toggle-hidden)"
+        endif
+        let env = vaffle#buffer#get_env()
+        let a = filter(copy(env.items), 'v:val.basename ==# basename')
+        if !empty(a)
+            execute a[0].index + 1
+        endif
     endif
 endfunction
 noremap <silent> <Space>e :call StartExplorer()<CR>
@@ -199,7 +208,7 @@ function! JumpToChar(direction, char)
         if j <= 0 || j > len(items)
             return
         end
-        if items[j-1].basename[0] ==? a:char
+        if items[j-1].basename =~? '\v^\.?\V' . a:char
             execute j
             break
         endif
