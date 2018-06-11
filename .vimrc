@@ -262,7 +262,7 @@ function! ShowBookmark()
     let jumped_from = bufname('%')
     execute 'Vaffle' temp_dir
     let w:jumped_from = jumped_from
-    nnoremap <buffer> l :Vaffle <cfile><CR>
+    nnoremap <buffer> l :execute 'Vaffle' getline(".")<CR>
     setlocal modifiable
     execute 'read' g:bookmark_file_path
     1d
@@ -325,6 +325,7 @@ nnoremap <Space>r :call ExecuteThisFile()<CR>
 function! s:find_file()
     let env = vaffle#buffer#get_env()
     let dir = (&filetype ==# s:file_explorer_file_type ? env.dir : getcwd())
+    let dir = shellescape(dir)
     if g:is_windows
         let dir = iconv(dir, &encoding, "cp932")
         let source = printf("rg --files --hidden %s 2> nul", dir)
