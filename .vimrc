@@ -18,7 +18,8 @@ set backspace=indent,eol,start
 syntax enable
 " colorscheme landscape
 " colorscheme PaperColor
-colorscheme desert
+colorscheme kalisi
+" colorscheme desert
 set number
 set cursorline
 set smartindent
