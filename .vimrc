@@ -10,10 +10,14 @@ call plug#begin('~/.vim/plugged')
     Plug 'tpope/vim-surround'
     Plug 'tpope/vim-repeat'
     Plug 'mileszs/ack.vim'
+    Plug 'flazz/vim-colorschemes'
+    Plug 'vim-airline/vim-airline-themes'
 call plug#end()
 
 set backspace=indent,eol,start
 syntax enable
+" colorscheme landscape
+" colorscheme PaperColor
 colorscheme desert
 set number
 set cursorline
