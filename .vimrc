@@ -15,11 +15,14 @@ call plug#begin('~/.vim/plugged')
 call plug#end()
 
 set backspace=indent,eol,start
+
 syntax enable
+" colorscheme spacegray
 " colorscheme landscape
 " colorscheme PaperColor
 colorscheme kalisi
 " colorscheme desert
+
 set number
 set cursorline
 set smartindent
@@ -30,6 +33,8 @@ set expandtab
 set tabstop=4
 set shiftwidth=4
 set softtabstop=0
+
+set ignorecase
 set smartcase
 set incsearch
 set hlsearch
@@ -38,7 +43,11 @@ set visualbell t_vb=
 
 set history=1000
 
+set complete+=k
+
 nnoremap Y y$
+nnoremap j gj
+nnoremap k gk
 
 let g:is_windows = has('win32') || has ('win64')
 
