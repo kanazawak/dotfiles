@@ -111,6 +111,7 @@ function! s:vaffle_init()
     nmap <silent><buffer> co :call OperateFileObtain('copy')<CR>
     nmap <silent><buffer> x <Plug>(vaffle-fill-cmdline)
     nmap <silent><buffer> X :call FillCmdlineWithDir()<CR>
+    nmap <silent><buffer> s :call ChangeSortOrder()<CR>
 
     augroup SaveCursor
         autocmd!
@@ -125,11 +126,31 @@ function! s:vaffle_init()
     endif
 endfunction
 
+function! ChangeSortOrder()
+    let env = vaffle#buffer#get_env()
+    if has_key(env, 'sorted') && env.sorted == v:true
+        call sort(env.items, 'vaffle#sorter#default#compare')
+        let env.sorted = v:false
+    else
+        let name2item = {}
+        for item in env.items
+            let name2item[item.basename] = item
+        endfor
+        let list = split(system('ls -t ' . env.dir), "\n")
+        let env.items = map(list, 'name2item[v:val]')
+        let env.sorted = v:true
+    endif
+    for i in range(0, len(env.items)-1)
+        let env.items[i].index = i
+    endfor
+    call vaffle#buffer#redraw()
+endfunction
+
 function! FillCmdlineWithDir()
-  let env = vaffle#buffer#get_env()
-  let path = fnameescape(env.dir)
-  let cmdline =printf(": %s\<Home>", path)
-  call feedkeys(cmdline)
+    let env = vaffle#buffer#get_env()
+    let path = fnameescape(env.dir)
+    let cmdline =printf(": %s\<Home>", path)
+    call feedkeys(cmdline)
 endfunction
 
 augroup DuplicateWhenSplitted
