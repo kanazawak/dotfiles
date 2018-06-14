@@ -82,6 +82,8 @@ augroup vaffle_config
 augroup END
 
 let g:bookmark_file_path = $HOME . '/.vim/.bookmark'
+let g:directory_symbol= ''
+let g:file_symbol= ''
 
 function! s:vaffle_init()
     nnoremap <silent><buffer> h :call GoBackward()<CR>
@@ -124,6 +126,14 @@ function! s:vaffle_init()
     if exists("w:jumped_from")
         unlet w:jumped_from
     endif
+endfunction
+
+" local-patch: 's:create_line_from_item' call this
+function! g:CreateLine(item) abort
+    return printf(' %s  %s%s',
+                \ a:item.is_dir ? g:directory_symbol : g:file_symbol,
+                \ a:item.selected ? '* ' : '',
+                \ a:item.basename . (a:item.is_dir ? '/' : ''))
 endfunction
 
 function! ChangeSortOrder()
