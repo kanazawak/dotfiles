@@ -45,6 +45,9 @@ set history=1000
 
 set complete+=k
 
+set encoding=utf8
+set ambiwidth=double
+
 nnoremap Y y$
 nnoremap j gj
 nnoremap k gk
