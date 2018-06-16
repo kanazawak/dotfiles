@@ -89,7 +89,7 @@ augroup END
 let g:bookmark_file_path = $HOME . '/.vim/.bookmark'
 
 function! s:vaffle_init()
-    nnoremap <silent><buffer> h :call GoBackward()<CR>
+    nmap <silent><buffer> h <Plug>(vaffle-open-parent)
     nnoremap <silent><buffer> l :call GoForward()<CR>
     nnoremap <silent><buffer> <CR> :call Open()<CR>
     nmap <silent><buffer> <Esc> <Plug>(vaffle-quit)
@@ -125,10 +125,6 @@ function! s:vaffle_init()
             \| call vaffle#buffer#save_cursor(item)
             \| endfor
     augroup END
-
-    if exists("w:jumped_from")
-        unlet w:jumped_from
-    endif
 endfunction
 
 function! g:VaffleCreateLineFromItem(item) abort
@@ -286,18 +282,6 @@ function! RepeatFindChar(direction)
     endif
 endfunction
 
-function! GoBackward()
-    if exists("w:jumped_from")
-        execute "Vaffle" w:jumped_from
-    else
-        let env = vaffle#buffer#get_env()
-        let parent_dir = fnameescape(fnamemodify(env.dir, ':h'))
-        if parent_dir !=# env.dir
-            call vaffle#open(parent_dir)
-        endif
-    endif
-endfunction
-
 function! AddBookmark()
     let env = vaffle#buffer#get_env()
     execute 'redir >>' g:bookmark_file_path
@@ -311,8 +295,9 @@ function! ShowBookmark()
     call mkdir(temp_dir, 'p')
     let jumped_from = bufname('%')
     execute 'Vaffle' temp_dir
-    let w:jumped_from = jumped_from
+    let b:jumped_from = jumped_from
     nnoremap <buffer> l :execute 'Vaffle' getline(".")<CR>
+    nnoremap <buffer> h :execute 'Vaffle' b:jumped_from<CR>
     setlocal modifiable
     execute 'read' g:bookmark_file_path
     1d
