@@ -4,7 +4,7 @@ call plug#begin('~/.vim/plugged')
     Plug 'godlygeek/tabular'
     Plug 'vim-airline/vim-airline'
     " Plug 'justinmk/vim-dirvish'
-    Plug 'cocopon/vaffle.vim'
+    Plug 'kanazawak/vaffle.vim'
     Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --all' }
     Plug 'junegunn/fzf.vim'
     Plug 'tpope/vim-surround'
@@ -131,36 +131,19 @@ function! s:vaffle_init()
     endif
 endfunction
 
-" my local patch -- 'vaffle#item#create(path)' calls this
-function! g:CreateItem(path) abort
-    let item = {}
-    let item.index = -1
-    let item.path = vaffle#util#normalize_path(a:path)
-    let item.is_dir = isdirectory(item.path)
-    let item.selected = 0
-    let item.basename = vaffle#util#get_last_component(a:path, item.is_dir)
-    return item
-endfunction
-
-" my local patch: 's:create_line_from_item' calls this
-function! g:CreateLine(item) abort
-    let env = vaffle#buffer#get_env()
-    let is_link = v:false
-    let logical_path = env.dir . g:path_separator . a:item.basename
-    if env.dir !~# g:path_separator . '$' && logical_path !=# a:item.path
-        let is_link = v:true
-    endif
+function! g:VaffleCreateLineFromItem(item) abort
+    " require Nerd Fonts
     if a:item.selected
         let icon = ''
-    elseif a:item.is_dir
-        let icon = (is_link ? '' : '')
+    elseif a:item.is_link
+        let icon = (isdirectory(a:item.path) ? '' : '')
     else
-        let icon = (is_link ? '' : '')
+        let icon = (isdirectory(a:item.path) ? '' : '')
     endif
     return printf(' %s %s%s',
                 \ icon,
                 \ a:item.basename . (a:item.is_dir ? '/' : ''),
-                \ is_link ? '  ' . a:item.path: '')
+                \ a:item.is_link ? '  ' . a:item.path: '')
 endfunction
 
 function! ChangeSortOrder()
