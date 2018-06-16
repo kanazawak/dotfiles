@@ -54,6 +54,8 @@ nnoremap k gk
 
 let g:is_windows = has('win32') || has ('win64')
 
+let g:path_separator = (g:is_windows ? '\' : '/')
+
 " File Explorer
 let s:file_explorer_command = 'Vaffle'
 let s:file_explorer_file_type = 'vaffle'
@@ -85,8 +87,6 @@ augroup vaffle_config
 augroup END
 
 let g:bookmark_file_path = $HOME . '/.vim/.bookmark'
-let g:directory_symbol= ''
-let g:file_symbol= ''
 
 function! s:vaffle_init()
     nnoremap <silent><buffer> h :call GoBackward()<CR>
@@ -131,12 +131,36 @@ function! s:vaffle_init()
     endif
 endfunction
 
-" local-patch: 's:create_line_from_item' call this
+" my local patch -- 'vaffle#item#create(path)' calls this
+function! g:CreateItem(path) abort
+    let item = {}
+    let item.index = -1
+    let item.path = vaffle#util#normalize_path(a:path)
+    let item.is_dir = isdirectory(item.path)
+    let item.selected = 0
+    let item.basename = vaffle#util#get_last_component(a:path, item.is_dir)
+    return item
+endfunction
+
+" my local patch: 's:create_line_from_item' calls this
 function! g:CreateLine(item) abort
-    return printf(' %s  %s%s',
-                \ a:item.is_dir ? g:directory_symbol : g:file_symbol,
-                \ a:item.selected ? '* ' : '',
-                \ a:item.basename . (a:item.is_dir ? '/' : ''))
+    let env = vaffle#buffer#get_env()
+    let is_link = v:false
+    let logical_path = env.dir . g:path_separator . a:item.basename
+    if env.dir !~# g:path_separator . '$' && logical_path !=# a:item.path
+        let is_link = v:true
+    endif
+    if a:item.selected
+        let icon = ''
+    elseif a:item.is_dir
+        let icon = (is_link ? '' : '')
+    else
+        let icon = (is_link ? '' : '')
+    endif
+    return printf(' %s %s%s',
+                \ icon,
+                \ a:item.basename . (a:item.is_dir ? '/' : ''),
+                \ is_link ? '  ' . a:item.path: '')
 endfunction
 
 function! ChangeSortOrder()
