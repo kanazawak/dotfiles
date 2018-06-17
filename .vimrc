@@ -115,7 +115,6 @@ function! s:vaffle_init()
     nmap <silent><buffer> cp :call OperateFilePut('copy')<CR>
     nmap <silent><buffer> co :call OperateFileObtain('copy')<CR>
     nmap <silent><buffer> x <Plug>(vaffle-fill-cmdline)
-    nmap <silent><buffer> X :call FillCmdlineWithDir()<CR>
     nmap <silent><buffer> s :call ChangeSortOrder()<CR>
 
     augroup SaveCursor
@@ -162,25 +161,12 @@ function! ChangeSortOrder()
     call vaffle#buffer#redraw()
 endfunction
 
-function! FillCmdlineWithDir()
-    let env = vaffle#buffer#get_env()
-    let path = fnameescape(env.dir)
-    let cmdline =printf(": %s\<Home>", path)
-    call feedkeys(cmdline)
-endfunction
-
 augroup DuplicateWhenSplitted
     autocmd!
-    autocmd WinNew * call timer_start(0, 'Duplicate')
+    autocmd WinNew * call timer_start(0, function({ timer ->
+                \ &filetype ==# 'vaffle'
+                \ && vaffle#buffer#duplicate() }))
 augroup END
-
-function! Duplicate(timer)
-    if &filetype ==# 'vaffle'
-        let l = line(".")
-        call vaffle#buffer#duplicate()
-        execute l
-    endif
-endfunction
 
 function! CursorItem()
     let items = vaffle#buffer#get_env().items
