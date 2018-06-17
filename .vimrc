@@ -309,7 +309,7 @@ endfunction
 
 function! GoForward()
     for item in CursorItem()
-        if item.is_dir
+        if isdirectory(item.path)
             call vaffle#open_current('edit')
         endif
     endfor
