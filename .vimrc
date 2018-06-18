@@ -117,13 +117,39 @@ function! s:vaffle_init()
     nmap <silent><buffer> x <Plug>(vaffle-fill-cmdline)
     nmap <silent><buffer> s :call ChangeSortOrder()<CR>
 
-    augroup SaveCursor
+    augroup VaffleAutoCmd
         autocmd!
         autocmd BufLeave <buffer>
             \  for item in CursorItem()
             \| call vaffle#buffer#save_cursor(item)
             \| endfor
+        autocmd CursorMoved <buffer>
+            \  for item in CursorItem()
+            \| echo CreatePathInfo(item.path)
+            \| endfor
     augroup END
+endfunction
+
+function! CreatePathInfo(path)
+    let type = getftype(a:path)
+    let perm = getfperm(a:path)
+    if isdirectory(a:path)
+        let expr = fnamemodify(a:path, ':p') . '*'
+        let list = vaffle#compat#glob_list(expr)
+        let size = len(list)
+    else
+        let byte = getfsize(a:path)
+        let k = 1024
+        for unit in ['B', 'K', 'M', 'G', 'T', 'P']
+            if byte < k
+                let size = (byte * 1024 / k) . ' ' . unit
+                break
+            end
+            let k = k * 1024
+        endfor
+    end
+    let time = strftime("%Y/%m/%d %H:%M", getftime(a:path))
+    return printf("%4s %s  %6s  %s  %s", type, perm, size, time, a:path)
 endfunction
 
 function! g:VaffleCreateLineFromItem(item) abort
