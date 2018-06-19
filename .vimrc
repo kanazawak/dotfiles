@@ -167,24 +167,31 @@ function! g:VaffleCreateLineFromItem(item) abort
                 \ a:item.is_link ? '  ' . a:item.path: '')
 endfunction
 
+function! g:VaffleGetComparator()
+    let env = vaffle#buffer#get_env()
+    if !has_key(env, 'comparators')
+        let env.comparators = [
+                    \ 'vaffle#sorter#default#compare',
+                    \ { lhs, rhs -> getftime(rhs.path) - getftime(lhs.path) }
+                    \ ]
+    endif
+    return env.comparators[0]
+endfunction
+
+function! RotateList(list)
+    let orig = copy(a:list)
+    let n = len(a:list)
+    for i in range(1, n)
+        let a:list[i - 1] = orig[i % n]
+    endfor
+endfunction
+
 function! ChangeSortOrder()
     let env = vaffle#buffer#get_env()
-    if has_key(env, 'sorted') && env.sorted == v:true
-        call sort(env.items, 'vaffle#sorter#default#compare')
-        let env.sorted = v:false
-    else
-        let name2item = {}
-        for item in env.items
-            let name2item[item.basename] = item
-        endfor
-        let list = split(system('ls -t ' . env.dir), "\n")
-        let env.items = map(list, 'name2item[v:val]')
-        let env.sorted = v:true
-    endif
-    for i in range(0, len(env.items)-1)
-        let env.items[i].index = i
-    endfor
-    call vaffle#buffer#redraw()
+    call RotateList(env.comparators)
+    call vaffle#refresh()
+    let new_env = vaffle#buffer#get_env()
+    let new_env.comparators = env.comparators
 endfunction
 
 augroup DuplicateWhenSplitted
