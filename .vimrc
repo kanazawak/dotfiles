@@ -161,7 +161,14 @@ function! g:VaffleCreateLineFromItem(item) abort
     else
         let icon = (isdirectory(a:item.path) ? '' : '')
     endif
-    return printf(' %s %s%s',
+    let env = vaffle#buffer#get_env()
+    if !has_key(env, 'comparators') || env.comparators[0] ==# 'vaffle#sorter#default#compare'
+        let time = ''
+    else
+        let time = strftime("%Y/%m/%d %H:%M ", getftime(a:item.path))
+    endif
+    return printf('%s %s %s%s',
+                \ time,
                 \ icon,
                 \ a:item.basename . (a:item.is_dir ? '/' : ''),
                 \ a:item.is_link ? '  ' . a:item.path: '')
@@ -198,6 +205,7 @@ function! ChangeSortOrder()
     call vaffle#refresh()
     let new_env = vaffle#buffer#get_env()
     let new_env.comparators = env.comparators
+    call vaffle#buffer#redraw()
 endfunction
 
 augroup DuplicateWhenSplitted
