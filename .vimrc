@@ -167,7 +167,7 @@ function! g:VaffleCreateLineFromItem(item) abort
                 \ a:item.is_link ? '  ' . a:item.path: '')
 endfunction
 
-function! g:VaffleGetComparator()
+function! CreateComparators()
     let env = vaffle#buffer#get_env()
     if !has_key(env, 'comparators')
         let env.comparators = [
@@ -175,6 +175,11 @@ function! g:VaffleGetComparator()
                     \ { lhs, rhs -> getftime(rhs.path) - getftime(lhs.path) }
                     \ ]
     endif
+endfunction
+
+function! g:VaffleGetComparator()
+    call CreateComparators()
+    let env = vaffle#buffer#get_env()
     return env.comparators[0]
 endfunction
 
@@ -187,6 +192,7 @@ function! RotateList(list)
 endfunction
 
 function! ChangeSortOrder()
+    call CreateComparators()
     let env = vaffle#buffer#get_env()
     call RotateList(env.comparators)
     call vaffle#refresh()
