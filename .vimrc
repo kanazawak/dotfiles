@@ -127,27 +127,51 @@ function! s:vaffle_init()
         \| endfor
 endfunction
 
+augroup CleanupPreview
+    autocmd!
+    autocmd BufEnter * call CleanupPreview()
+augroup END
+
+function! CleanupPreview()
+    let curr_winind = win_getid()
+    windo
+        \  if &previewwindow
+        \     && empty(filter(tabpagebuflist(), 'v:val == ' . w:opener_bufnr))
+        \| pclose
+        \| endif
+    call win_gotoid(curr_winind)
+    call timer_start(0, { t -> execute('if exists("b:preview") | unlet b:preview | edit | endif') })
+endfunction
+
 function! Preview(item)
-    if a:item.is_dir
-        execute 'pedit +call\ PreviewDir(expand("%"))' a:item.path
-    elseif buflisted(a:item.path)
-        execute 'pedit' a:item.path
+    let mode =
+        \   a:item.is_dir ?          1
+        \ : buflisted(a:item.path) ? 2
+        \ :                          3
+    execute printf('pedit +call\ PreviewCallback(expand("%%"),%s,%s) %s',
+                \ bufnr("%"),
+                \ mode,
+                \ a:item.path)
+endfunction
+
+function! PreviewCallback(path, bufnr, mode)
+    let w:opener_bufnr = a:bufnr
+    if a:mode == 2
+        " loaded file
     else
-        execute 'pedit +call\ PreviewFile()' a:item.path
+        setlocal nobuflisted
+        setlocal noswapfile
+        let b:preview = 1
+        if a:mode == 1
+            " directory
+            let env = vaffle#env#create(a:path)
+            let env.items = vaffle#env#create_items(env)
+            let b:vaffle = env
+            call vaffle#buffer#redraw()
+        else
+            " unloaded file
+        end
     end
-endfunction
-
-function! PreviewDir(path)
-    setlocal nobuflisted
-    let env = vaffle#env#create(a:path)
-    let env.items = vaffle#env#create_items(env)
-    let b:vaffle = env
-    call vaffle#buffer#redraw()
-endfunction
-
-function! PreviewFile()
-    setlocal nobuflisted
-    setlocal noswapfile
 endfunction
 
 function! CreatePathInfo(path)
