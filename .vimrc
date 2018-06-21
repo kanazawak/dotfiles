@@ -117,17 +117,37 @@ function! s:vaffle_init()
     nmap <silent><buffer> x <Plug>(vaffle-fill-cmdline)
     nmap <silent><buffer> s :call ChangeSortOrder()<CR>
 
-    augroup VaffleAutoCmd
-        autocmd!
-        autocmd BufLeave <buffer>
-            \  for item in CursorItem()
-            \| call vaffle#buffer#save_cursor(item)
-            \| endfor
-        autocmd CursorMoved <buffer>
-            \  for item in CursorItem()
-            \| echo CreatePathInfo(item.path)
-            \| endfor
-    augroup END
+    autocmd BufLeave <buffer>
+        \  for item in CursorItem()
+        \| call vaffle#buffer#save_cursor(item)
+        \| endfor
+    autocmd CursorMoved <buffer>
+        \  for item in CursorItem()
+        \| call Preview(item)
+        \| endfor
+endfunction
+
+function! Preview(item)
+    if a:item.is_dir
+        execute 'pedit +call\ PreviewDir(expand("%"))' a:item.path
+    elseif buflisted(a:item.path)
+        execute 'pedit' a:item.path
+    else
+        execute 'pedit +call\ PreviewFile()' a:item.path
+    end
+endfunction
+
+function! PreviewDir(path)
+    setlocal nobuflisted
+    let env = vaffle#env#create(a:path)
+    let env.items = vaffle#env#create_items(env)
+    let b:vaffle = env
+    call vaffle#buffer#redraw()
+endfunction
+
+function! PreviewFile()
+    setlocal nobuflisted
+    setlocal noswapfile
 endfunction
 
 function! CreatePathInfo(path)
