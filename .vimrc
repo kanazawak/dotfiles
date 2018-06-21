@@ -127,20 +127,25 @@ function! s:vaffle_init()
         \| endfor
 endfunction
 
+augroup ReloadPreviewedBuffer
+    autocmd!
+    autocmd BufEnter *
+        \  if !&previewwindow && exists("b:previewed")
+        \| unlet b:previewed
+        \| call timer_start('0', { timer -> execute('edit') })
+        \| endif
+augroup END
+
 augroup CleanupPreview
     autocmd!
-    autocmd BufEnter * call CleanupPreview()
+    autocmd BufEnter,BufLeave,WinEnter,WinLeave * call CleanupPreview()
 augroup END
 
 function! CleanupPreview()
-    let curr_winind = win_getid()
-    windo
-        \  if &previewwindow
-        \     && empty(filter(tabpagebuflist(), 'v:val == ' . w:opener_bufnr))
-        \| pclose
-        \| endif
-    call win_gotoid(curr_winind)
-    call timer_start(0, { t -> execute('if exists("b:preview") | unlet b:preview | edit | endif') })
+    if exists('w:opener_bufnr') && count(tabpagebuflist(), w:opener_bufnr) == 0
+        unlet w:opener_bufnr
+        pclose
+    endif
 endfunction
 
 function! Preview(item)
@@ -148,28 +153,27 @@ function! Preview(item)
         \   a:item.is_dir ?          1
         \ : buflisted(a:item.path) ? 2
         \ :                          3
-    execute printf('pedit +call\ PreviewCallback(expand("%%"),%s,%s) %s',
-                \ bufnr("%"),
+    let w:opener_bufnr = bufnr("%")
+    execute printf('pedit +call\ PreviewCallback(%s) %s',
                 \ mode,
                 \ a:item.path)
 endfunction
 
-function! PreviewCallback(path, bufnr, mode)
-    let w:opener_bufnr = a:bufnr
+function! PreviewCallback(mode)
     if a:mode == 2
-        " loaded file
+        " buflisted file
     else
         setlocal nobuflisted
         setlocal noswapfile
-        let b:preview = 1
+        let b:previewed = 1
         if a:mode == 1
             " directory
-            let env = vaffle#env#create(a:path)
+            let env = vaffle#env#create(expand("%"))
             let env.items = vaffle#env#create_items(env)
             let b:vaffle = env
             call vaffle#buffer#redraw()
         else
-            " unloaded file
+            " unbuflisted file
         end
     end
 endfunction
