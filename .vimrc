@@ -149,19 +149,29 @@ function! CleanupPreview()
 endfunction
 
 function! Preview(item)
+    let limit = 1024 * 1024
     let mode =
-        \   a:item.is_dir ?          1
-        \ : buflisted(a:item.path) ? 2
-        \ :                          3
+        \   a:item.is_dir                   ? 1
+        \ : buflisted(a:item.path)          ? 2
+        \ : getfsize(a:item.path) >= limit  ? 3
+        \ :                                   4
     let w:opener_bufnr = bufnr("%")
     execute printf('pedit +call\ PreviewCallback(%s) %s',
                 \ mode,
-                \ a:item.path)
+                \ mode == 3 ? tempname() : a:item.path)
 endfunction
 
 function! PreviewCallback(mode)
     if a:mode == 2
         " buflisted file
+    elseif a:mode == 3
+        " large file
+        setlocal nobuflisted
+        setlocal bufhidden=wipe
+        setlocal modifiable
+        call setline(1, '(Too large for preview)')
+        setlocal nomodifiable
+        setlocal nomodified
     else
         setlocal nobuflisted
         setlocal noswapfile
