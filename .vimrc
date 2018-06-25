@@ -42,6 +42,7 @@ set hlsearch
 set visualbell t_vb=
 
 set history=1000
+set viminfo='1000,<0,h
 
 set complete+=k
 
@@ -142,8 +143,8 @@ augroup CleanupPreview
 augroup END
 
 function! CleanupPreview()
-    if exists('w:opener_bufnr') && count(tabpagebuflist(), w:opener_bufnr) == 0
-        unlet w:opener_bufnr
+    if exists('t:opener_bufnr') && count(tabpagebuflist(), t:opener_bufnr) == 0
+        unlet t:opener_bufnr
         pclose
     endif
 endfunction
@@ -155,7 +156,7 @@ function! Preview(item)
         \ : buflisted(a:item.path)          ? 2
         \ : getfsize(a:item.path) >= limit  ? 3
         \ :                                   4
-    let w:opener_bufnr = bufnr("%")
+    let t:opener_bufnr = bufnr("%")
     execute printf('pedit +call\ PreviewCallback(%s) %s',
                 \ mode,
                 \ mode == 3 ? tempname() : a:item.path)
