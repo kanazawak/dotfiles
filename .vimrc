@@ -117,16 +117,24 @@ function! s:vaffle_init()
     nmap <silent><buffer> co :call OperateFileObtain('copy')<CR>
     nmap <silent><buffer> x <Plug>(vaffle-fill-cmdline)
     nmap <silent><buffer> s :call ChangeSortOrder()<CR>
+    nmap <silent><buffer> p :call TogglePreview()<CR>
 
     autocmd BufLeave <buffer>
         \  for item in CursorItem()
         \| call vaffle#buffer#save_cursor(item)
         \| endfor
+
     autocmd CursorMoved <buffer>
         \  for item in CursorItem()
+        \| if t:previewing
         \| call Preview(item)
+        \| endif
         \| endfor
 endfunction
+
+augroup Preview
+    autocmd VimEnter,TabNew * if !exists('t:previewing') | let t:previewing = v:true | endif
+augroup END
 
 augroup ReloadPreviewedBuffer
     autocmd!
@@ -186,6 +194,20 @@ function! PreviewCallback(mode)
         else
             " unbuflisted file
         end
+    end
+endfunction
+
+function! TogglePreview()
+    if t:previewing
+        pclose
+        let t:previewing = v:false
+    else
+        let t:previewing = v:true
+        for item in CursorItem()
+            set eventignore=all
+            call Preview(item)
+            set eventignore=
+        endfor
     end
 endfunction
 
