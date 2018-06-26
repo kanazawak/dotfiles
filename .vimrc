@@ -3,7 +3,6 @@ call plug#begin('~/.vim/plugged')
     Plug 'tpope/vim-commentary'
     Plug 'godlygeek/tabular'
     Plug 'vim-airline/vim-airline'
-    " Plug 'justinmk/vim-dirvish'
     Plug 'kanazawak/vaffle.vim'
     Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --all' }
     Plug 'junegunn/fzf.vim'
@@ -55,20 +54,16 @@ nnoremap k gk
 
 let g:is_windows = has('win32') || has ('win64')
 
-let g:path_separator = (g:is_windows ? '\' : '/')
-
 " File Explorer
-let s:file_explorer_command = 'Vaffle'
-let s:file_explorer_file_type = 'vaffle'
 function! StartExplorer()
-    if &filetype ==# s:file_explorer_file_type
+    if &filetype ==# 'vaffle'
         if g:is_windows
             let env = vaffle#buffer#get_env()
             execute "!start" env.dir
         endif
     else
         let basename = expand("%:t")
-        execute s:file_explorer_command expand("%:p:h")
+        execute 'Vaffle' expand("%:p:h")
         if basename =~# '\v^\.'
             execute "normal \<Plug>(vaffle-toggle-hidden)"
         endif
@@ -132,30 +127,23 @@ function! s:vaffle_init()
         \| endfor
 endfunction
 
-augroup Preview
-    autocmd VimEnter,TabNew * if !exists('t:previewing') | let t:previewing = v:true | endif
-augroup END
-
-augroup ReloadPreviewedBuffer
+augroup AutoCommandsForPreview
     autocmd!
+    autocmd VimEnter,TabNew *
+        \  if !exists('t:previewing')
+        \| let t:previewing = v:true
+        \| endif
     autocmd BufEnter *
-        \  if !&previewwindow && exists("b:previewed")
+        \  if !&previewwindow && exists('b:previewed')
         \| unlet b:previewed
         \| call timer_start('0', { timer -> execute('edit') })
         \| endif
+    autocmd BufEnter,BufLeave *
+        \  if exists('t:opener_bufnr') && count(tabpagebuflist(), t:opener_bufnr) == 0
+        \| unlet t:opener_bufnr
+        \| pclose
+        \| endif
 augroup END
-
-augroup CleanupPreview
-    autocmd!
-    autocmd BufEnter,BufLeave,WinEnter,WinLeave * call CleanupPreview()
-augroup END
-
-function! CleanupPreview()
-    if exists('t:opener_bufnr') && count(tabpagebuflist(), t:opener_bufnr) == 0
-        unlet t:opener_bufnr
-        pclose
-    endif
-endfunction
 
 function! Preview(item)
     let limit = 1024 * 1024
@@ -209,28 +197,6 @@ function! TogglePreview()
             set eventignore=
         endfor
     end
-endfunction
-
-function! CreatePathInfo(path)
-    let type = getftype(a:path)
-    let perm = getfperm(a:path)
-    if isdirectory(a:path)
-        let expr = fnamemodify(a:path, ':p') . '*'
-        let list = vaffle#compat#glob_list(expr)
-        let size = len(list)
-    else
-        let byte = getfsize(a:path)
-        let k = 1024
-        for unit in ['B', 'K', 'M', 'G', 'T', 'P']
-            if byte < k
-                let size = (byte * 1024 / k) . ' ' . unit
-                break
-            end
-            let k = k * 1024
-        endfor
-    end
-    let time = strftime("%Y/%m/%d %H:%M", getftime(a:path))
-    return printf("%4s %s  %6s  %s  %s", type, perm, size, time, a:path)
 endfunction
 
 function! g:VaffleCreateLineFromItem(item) abort
@@ -473,7 +439,7 @@ nnoremap <Space>r :call ExecuteThisFile()<CR>
 
 function! s:find_file()
     let env = vaffle#buffer#get_env()
-    let dir = (&filetype ==# s:file_explorer_file_type ? env.dir : getcwd())
+    let dir = (&filetype ==# 'vaffle' ? env.dir : getcwd())
     let dir = shellescape(dir)
     if g:is_windows
         let dir = iconv(dir, &encoding, "cp932")
@@ -498,7 +464,7 @@ end
 nnoremap <Space>g :Rg<Space>
 command! -nargs=1 Rg call s:rg(<f-args>)
 function! s:rg(str)
-    if &filetype ==# s:file_explorer_file_type
+    if &filetype ==# 'vaffle'
         let env = vaffle#buffer#get_env()
         execute "Ack" a:str env.dir
         execute "normal \<CR>"
@@ -514,7 +480,7 @@ nnoremap ]q :cnext<CR>
 nnoremap ]]q :cnfile<CR>
 
 function! s:start_shell()
-    if &filetype ==# s:file_explorer_file_type
+    if &filetype ==# 'vaffle'
         let env = vaffle#buffer#get_env()
         call term_start(&shell, {'term_finish': 'close', 'cwd': env.dir})
     else
