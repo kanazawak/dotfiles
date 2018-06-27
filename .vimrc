@@ -11,6 +11,7 @@ call plug#begin('~/.vim/plugged')
     Plug 'mileszs/ack.vim'
     Plug 'flazz/vim-colorschemes'
     Plug 'vim-airline/vim-airline-themes'
+    Plug 'Shougo/Unite.vim'
 call plug#end()
 
 set backspace=indent,eol,start
@@ -136,9 +137,9 @@ augroup AutoCommandsForPreview
     autocmd BufEnter *
         \  if !&previewwindow && exists('b:previewed')
         \| unlet b:previewed
-        \| call timer_start('0', { timer -> execute('edit') })
+        \| call timer_start(0, { -> execute('edit') })
         \| endif
-    autocmd BufEnter,BufLeave *
+    autocmd BufEnter *
         \  if exists('t:opener_bufnr') && count(tabpagebuflist(), t:opener_bufnr) == 0
         \| unlet t:opener_bufnr
         \| pclose
@@ -257,9 +258,9 @@ endfunction
 
 augroup DuplicateWhenSplitted
     autocmd!
-    autocmd WinNew * call timer_start(0, function({ timer ->
+    autocmd WinNew * call timer_start(0, { ->
                 \ &filetype ==# 'vaffle'
-                \ && vaffle#buffer#duplicate() }))
+                \ && vaffle#buffer#duplicate() })
 augroup END
 
 function! CursorItem()
@@ -390,7 +391,7 @@ endfunction
 function! GoForward()
     for item in CursorItem()
         if isdirectory(item.path)
-            call vaffle#open_current('edit')
+            call vaffle#open_current('')
         endif
     endfor
 endfunction
@@ -398,7 +399,7 @@ endfunction
 function! Open()
     for item in CursorItem()
         if item.is_dir
-            call vaffle#open_current('edit')
+            call vaffle#open_current('')
         else
             execute 'OpenFile' item.path
         endif
