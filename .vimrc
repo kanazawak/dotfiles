@@ -11,7 +11,6 @@ call plug#begin('~/.vim/plugged')
     Plug 'mileszs/ack.vim'
     Plug 'flazz/vim-colorschemes'
     Plug 'vim-airline/vim-airline-themes'
-    Plug 'Shougo/Unite.vim'
 call plug#end()
 
 set backspace=indent,eol,start
