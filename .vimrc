@@ -121,7 +121,7 @@ function! s:vaffle_init()
 
     autocmd CursorMoved <buffer>
         \  for item in CursorItem()
-        \| if t:previewing
+        \| if Previewing()
         \| call Preview(item)
         \| endif
         \| endfor
@@ -131,9 +131,12 @@ function! Any(list, predicate)
     return !empty(filter(a:list, a:predicate))
 endfunction
 
+function! Previewing()
+    return Any(range(1, winnr('$')), 'getwinvar(v:val, "&previewwindow") == 1')
+endfunction
+
 augroup AutoCommandsForPreview
     autocmd!
-    autocmd VimEnter,TabNew * let t:previewing = get(t:, 'previewing', v:true)
     autocmd BufEnter *
         \  if !&previewwindow && exists('b:previewed')
         \| unlet b:previewed
@@ -185,15 +188,13 @@ function! PreviewCallback(mode)
 endfunction
 
 function! TogglePreview()
-    if t:previewing
+    if Previewing()
         pclose
-        let t:previewing = v:false
     else
-        let t:previewing = v:true
         for item in CursorItem()
-            set eventignore=all
+            " set eventignore=all
             call Preview(item)
-            set eventignore=
+            " set eventignore=
         endfor
     end
 endfunction
