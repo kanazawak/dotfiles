@@ -88,31 +88,31 @@ function! s:vaffle_init()
     nmap <silent><buffer> h <Plug>(vaffle-open-parent)
     nnoremap <silent><buffer> l :call GoForward()<CR>
     nnoremap <silent><buffer> <CR> :call Open()<CR>
-    nmap <silent><buffer> <Esc> <Plug>(vaffle-quit)
-    nmap <silent><buffer> <C-^> <Plug>(vaffle-open-home)
-    nmap <silent><buffer> a :call AddBookmark()<CR>
-    nmap <silent><buffer> b :call ShowBookmark()<CR>
-    nmap <silent><buffer> d <Plug>(vaffle-delete-selected)
-    vmap <silent><buffer> d <Plug>(vaffle-delete-selected)
-    nmap <silent><buffer> <Tab> <Plug>(vaffle-toggle-current)
-    nmap <silent><buffer> . <Plug>(vaffle-toggle-hidden)
-    nmap <silent><buffer> ~ <Plug>(vaffle-open-home)
-    nmap <silent><buffer> mv <Plug>(vaffle-move-selected)
-    nmap <silent><buffer> f :call FindChar(1)<CR>
-    nmap <silent><buffer> F :call FindChar(-1)<CR>
-    nmap <silent><buffer> ; :call RepeatFindChar(1)<CR>
-    nmap <silent><buffer> , :call RepeatFindChar(-1)<CR>
-    nmap <silent><buffer> R <Plug>(vaffle-refresh)
-    nmap <silent><buffer> o <Plug>(vaffle-new-file)
-    nmap <silent><buffer> O <Plug>(vaffle-mkdir)
-    nmap <silent><buffer> r <Plug>(vaffle-rename-selected)
-    nmap <silent><buffer> mp :call OperateFilePut('move')<CR>
-    nmap <silent><buffer> mo :call OperateFileObtain('move')<CR>
-    nmap <silent><buffer> cp :call OperateFilePut('copy')<CR>
-    nmap <silent><buffer> co :call OperateFileObtain('copy')<CR>
-    nmap <silent><buffer> x <Plug>(vaffle-fill-cmdline)
-    nmap <silent><buffer> s :call ChangeSortOrder()<CR>
-    nmap <silent><buffer> p :call TogglePreview()<CR>
+    nmap <silent><buffer><nowait> <Esc> <Plug>(vaffle-quit)
+    nmap <silent><buffer><nowait> <C-^> <Plug>(vaffle-open-home)
+    nmap <silent><buffer><nowait> a :call AddBookmark()<CR>
+    nmap <silent><buffer><nowait> b :call ShowBookmark()<CR>
+    nmap <silent><buffer><nowait> d <Plug>(vaffle-delete-selected)
+    vmap <silent><buffer><nowait> d <Plug>(vaffle-delete-selected)
+    nmap <silent><buffer><nowait> <Tab> <Plug>(vaffle-toggle-current)
+    nmap <silent><buffer><nowait> . <Plug>(vaffle-toggle-hidden)
+    nmap <silent><buffer><nowait> ~ <Plug>(vaffle-open-home)
+    nmap <silent><buffer><nowait> mv <Plug>(vaffle-move-selected)
+    nmap <silent><buffer><nowait> f :call FindChar(1)<CR>
+    nmap <silent><buffer><nowait> F :call FindChar(-1)<CR>
+    nmap <silent><buffer><nowait> ; :call RepeatFindChar(1)<CR>
+    nmap <silent><buffer><nowait> , :call RepeatFindChar(-1)<CR>
+    nmap <silent><buffer><nowait> R <Plug>(vaffle-refresh)
+    nmap <silent><buffer><nowait> o <Plug>(vaffle-new-file)
+    nmap <silent><buffer><nowait> O <Plug>(vaffle-mkdir)
+    nmap <silent><buffer><nowait> r <Plug>(vaffle-rename-selected)
+    nmap <silent><buffer><nowait> mp :call OperateFileBetweenWindow('move', 'put')<CR>
+    nmap <silent><buffer><nowait> mo :call OperateFileBetweenWindow('move', 'obtain')<CR>
+    nmap <silent><buffer><nowait> cp :call OperateFileBetweenWindow('copy', 'put')<CR>
+    nmap <silent><buffer><nowait> co :call OperateFileBetweenWindow('copy', 'obtain')<CR>
+    nmap <silent><buffer><nowait> x <Plug>(vaffle-fill-cmdline)
+    nmap <silent><buffer><nowait> s :call ChangeSortOrder()<CR>
+    nmap <silent><buffer><nowait> p :call TogglePreview()<CR>
 
     autocmd BufLeave <buffer>
         \  for item in CursorItem()
@@ -127,20 +127,20 @@ function! s:vaffle_init()
         \| endfor
 endfunction
 
+function! Any(list, predicate)
+    return !empty(filter(a:list, a:predicate))
+endfunction
+
 augroup AutoCommandsForPreview
     autocmd!
-    autocmd VimEnter,TabNew *
-        \  if !exists('t:previewing')
-        \| let t:previewing = v:true
-        \| endif
+    autocmd VimEnter,TabNew * let t:previewing = get(t:, 'previewing', v:true)
     autocmd BufEnter *
         \  if !&previewwindow && exists('b:previewed')
         \| unlet b:previewed
-        \| call timer_start(0, { -> execute('edit') })
+        \| doautocmd BufRead
         \| endif
     autocmd BufEnter *
-        \  if exists('t:opener_bufnr') && count(tabpagebuflist(), t:opener_bufnr) == 0
-        \| unlet t:opener_bufnr
+        \  if !Any(tabpagebuflist(), 'getbufvar(v:val, "&filetype") ==# "vaffle"')
         \| pclose
         \| endif
 augroup END
@@ -152,7 +152,6 @@ function! Preview(item)
         \ : buflisted(a:item.path)          ? 2
         \ : getfsize(a:item.path) >= limit  ? 3
         \ :                                   4
-    let t:opener_bufnr = bufnr("%")
     execute printf('pedit +call\ PreviewCallback(%s) %s',
                 \ mode,
                 \ mode == 3 ? tempname() : a:item.path)
@@ -264,11 +263,7 @@ augroup END
 
 function! CursorItem()
     let items = vaffle#buffer#get_env().items
-    if empty(items)
-        return []
-    else
-        return [items[line(".")-1]]
-    endif
+    return empty(items) ? [] : [items[line(".")-1]]
 endfunction
 
 function! OperateFile(from_winnr, to_winnr, operation)
@@ -295,26 +290,21 @@ endfunction
 function! ExecOperation(from_path, to_path, operation)
     if a:operation ==# 'move'
         call rename(a:from_path, a:to_path)
-    elseif a:operation ==# 'copy' && g:is_windows
-        silent execute '!copy' shellescape(a:from_path) shellescape(a:to_path)
-        redraw!
     elseif a:operation ==# 'copy'
-        silent execute '!cp' shellescape(a:from_path) shellescape(a:to_path)
+        let command = (g:is_windows ? '!copy' : '!cp')
+        silent execute command shellescape(a:from_path) shellescape(a:to_path)
         redraw!
     end
 endfunction
 
-function! OperateFilePut(operation)
-    let from_winnr = winnr()
-    for to_winnr in FindOtherVaffle()
-        call OperateFile(from_winnr, to_winnr, a:operation)
-    endfor
-endfunction
-
-function! OperateFileObtain(operation)
-    let to_winnr = winnr()
-    for from_winnr in FindOtherVaffle()
-        call OperateFile(from_winnr, to_winnr, a:operation)
+function! OperateFileBetweenWindow(operation, direction)
+    let my_winnr = winnr()
+    for other_winnr in FindOtherVaffle()
+        if a:direction ==# 'put'
+            call OperateFile(my_winnr, other_winnr, a:operation)
+        else
+            call OperateFile(other_winnr, my_winnr, a:operation)
+        endif
     endfor
 endfunction
 
