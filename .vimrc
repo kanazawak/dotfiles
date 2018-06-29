@@ -113,6 +113,8 @@ function! s:vaffle_init()
     nmap <silent><buffer><nowait> x <Plug>(vaffle-fill-cmdline)
     nmap <silent><buffer><nowait> s :call ChangeSortOrder()<CR>
     nmap <silent><buffer><nowait> p :call TogglePreview()<CR>
+    nmap <silent><buffer><nowait> <C-j> :call ScrollPreview(1)<CR>
+    nmap <silent><buffer><nowait> <C-k> :call ScrollPreview(-1)<CR>
 
     autocmd BufLeave <buffer>
         \  for item in CursorItem()
@@ -127,6 +129,19 @@ function! s:vaffle_init()
         \| endfor
 endfunction
 
+function! ScrollPreview(direction)
+    let curr_winnr = winnr()
+    if a:direction >= 0
+        let command = "normal! " . a:direction . "\<C-e>"
+    else
+        let command = "normal! " . -a:direction . "\<C-y>"
+    endif
+    set eventignore=BufEnter
+    windo if &previewwindow | execute command | endif
+    execute curr_winnr . 'wincmd w'
+    set eventignore=
+endfunction
+
 function! Any(list, predicate)
     return !empty(filter(a:list, a:predicate))
 endfunction
@@ -137,7 +152,7 @@ endfunction
 
 augroup AutoCommandsForPreview
     autocmd!
-    autocmd BufEnter * doautocmd filetypedetect BufRead
+    autocmd BufEnter * if !&previewwindow | doautocmd filetypedetect BufRead | endif
     autocmd BufEnter *
         \  if !Any(tabpagebuflist(), 'getbufvar(v:val, "&filetype") ==# "vaffle"')
         \| pclose
