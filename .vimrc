@@ -137,7 +137,7 @@ endfunction
 
 augroup AutoCommandsForPreview
     autocmd!
-    autocmd BufEnter * if !&previewwindow | doautocmd filetypedetect BufRead | endif
+    autocmd BufEnter * doautocmd filetypedetect BufRead
     autocmd BufEnter *
         \  if !Any(tabpagebuflist(), 'getbufvar(v:val, "&filetype") ==# "vaffle"')
         \| pclose
@@ -145,40 +145,30 @@ augroup AutoCommandsForPreview
 augroup END
 
 function! Preview(item)
+    set eventignore=WinNew,BufEnter,BufLeave
     let limit = 1024 * 1024
-    let mode =
-        \   a:item.is_dir                   ? 1
-        \ : buflisted(a:item.path)          ? 2
-        \ : getfsize(a:item.path) >= limit  ? 3
-        \ :                                   4
-    execute printf('pedit +call\ PreviewCallback(%s) %s',
-                \ mode,
-                \ mode == 3 ? tempname() : a:item.path)
+    if getfsize(a:item.path) >= limit
+        execute printf('pedit +call\ PreviewLargeFileCallback() %s', tempname())
+    elseif buflisted(a:item.path)
+        execute 'pedit +setlocal\ nocursorline' a:item.path
+    else
+        execute printf('pedit +call\ PreviewCallback() %s', a:item.path)
+    endif
+    set eventignore=
 endfunction
 
-function! PreviewCallback(mode)
-    if a:mode == 2
-        " buflisted file
-    elseif a:mode == 3
-        " large file
-        setlocal nobuflisted
-        setlocal bufhidden=wipe
-        setlocal modifiable
-        call setline(1, '(Too large for preview)')
-        setlocal nomodifiable
-        setlocal nomodified
-    else
-        setlocal nobuflisted
-        setlocal noswapfile
-        if a:mode == 1
-            " directory
-            let env = vaffle#env#create(expand("%"))
-            let env.items = vaffle#env#create_items(env)
-            let b:vaffle = env
-            call vaffle#buffer#redraw()
-        else
-            " unbuflisted file
-        end
+function! PreviewLargeFileCallback()
+    call setline(1, ' (Too large for preview)')
+    setlocal nomodifiable nomodified nobuflisted bufhidden=wipe
+endfunction
+
+function! PreviewCallback()
+    setlocal nocursorline nobuflisted noswapfile
+    if isdirectory(expand("%"))
+        let env = vaffle#env#create(expand("%"))
+        let env.items = vaffle#env#create_items(env)
+        let b:vaffle = env
+        call vaffle#buffer#redraw()
     end
 endfunction
 
@@ -187,9 +177,7 @@ function! TogglePreview()
         pclose
     else
         for item in CursorItem()
-            set eventignore=all
             call Preview(item)
-            set eventignore=
         endfor
     end
 endfunction
