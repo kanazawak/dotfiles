@@ -137,11 +137,7 @@ endfunction
 
 augroup AutoCommandsForPreview
     autocmd!
-    autocmd BufEnter *
-        \  if !&previewwindow && exists('b:previewed')
-        \| unlet b:previewed
-        \| doautocmd BufRead
-        \| endif
+    autocmd BufEnter * if !&previewwindow | doautocmd filetypedetect BufRead | endif
     autocmd BufEnter *
         \  if !Any(tabpagebuflist(), 'getbufvar(v:val, "&filetype") ==# "vaffle"')
         \| pclose
@@ -174,7 +170,6 @@ function! PreviewCallback(mode)
     else
         setlocal nobuflisted
         setlocal noswapfile
-        let b:previewed = 1
         if a:mode == 1
             " directory
             let env = vaffle#env#create(expand("%"))
@@ -192,9 +187,9 @@ function! TogglePreview()
         pclose
     else
         for item in CursorItem()
-            " set eventignore=all
+            set eventignore=all
             call Preview(item)
-            " set eventignore=
+            set eventignore=
         endfor
     end
 endfunction
