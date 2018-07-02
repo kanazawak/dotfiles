@@ -492,6 +492,9 @@ nnoremap [q :cprevious<CR>
 nnoremap [[q :cpfile<CR>
 nnoremap ]q :cnext<CR>
 nnoremap ]]q :cnfile<CR>
+nnoremap []q :copen<CR>
+nnoremap ][q :cclose<CR>
+nnoremap ][h :helpclose<CR>
 
 function! s:start_shell()
     if &filetype ==# 'vaffle'
