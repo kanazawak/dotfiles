@@ -150,14 +150,22 @@ function! Previewing()
     return Any(range(1, winnr('$')), 'getwinvar(v:val, "&previewwindow") == 1')
 endfunction
 
-augroup AutoCommandsForPreview
+augroup VaffleAutoCommands
     autocmd!
     autocmd BufEnter * if !&previewwindow | doautocmd filetypedetect BufRead | endif
     autocmd BufEnter *
         \  if !Any(tabpagebuflist(), 'getbufvar(v:val, "&filetype") ==# "vaffle"')
         \| pclose
         \| endif
+    autocmd User VaffleRedrawPost if !&previewwindow | call Align() | endif
 augroup END
+
+function! Align()
+    if search("\t") > 0
+        Tabularize/\t/l0r0r0
+        %s/\t/  /g
+    endif
+endfunction
 
 function! Preview(item)
     set eventignore=WinNew,BufEnter,BufLeave
@@ -207,16 +215,33 @@ function! g:VaffleCreateLineFromItem(item) abort
         let icon = (isdirectory(a:item.path) ? '' : '')
     endif
     let env = vaffle#buffer#get_env()
-    if !has_key(env, 'comparators') || env.comparators[0] ==# 'vaffle#sorter#default#compare'
+    if &previewwindow
         let time = ''
     else
-        let time = strftime("%Y/%m/%d %H:%M ", getftime(a:item.path))
+        let time = strftime("%y/%m/%d %H:%M ", getftime(a:item.path))
     endif
-    return printf('%s %s %s%s',
-                \ time,
+    if &previewwindow
+        let size = ''
+    elseif a:item.is_dir
+        let size = len(glob(a:item.path . '/*', 0, 1, 1))
+    else
+        let byte = getfsize(a:item.path)
+        let k = 1024
+        for unit in ['B', 'K', 'M', 'G', 'T']
+            if byte < k
+                let size = (byte * 1024 / k) . unit
+                break
+            else
+                let k = k * 1024
+            endif
+        endfor
+    endif
+    return printf("%s %s%s\t%s\t%s",
                 \ icon,
                 \ a:item.basename . (a:item.is_dir ? '/' : ''),
-                \ a:item.is_link ? '  ' . a:item.path: '')
+                \ a:item.is_link ? '  ' . a:item.path: '',
+                \ size,
+                \ time)
 endfunction
 
 function! CreateComparators()
