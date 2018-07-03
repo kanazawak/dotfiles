@@ -116,6 +116,10 @@ function! s:vaffle_init()
     nmap <silent><buffer><nowait> <C-j> :call ScrollPreview(1)<CR>
     nmap <silent><buffer><nowait> <C-k> :call ScrollPreview(-1)<CR>
 
+    if !exists('b:vaffle_sorter_list')
+        let b:vaffle_sorter_list = ['default', 'time']
+    endif
+
     autocmd BufLeave <buffer>
         \  for item in CursorItem()
         \| call vaffle#buffer#save_cursor(item)
@@ -244,20 +248,13 @@ function! g:VaffleCreateLineFromItem(item) abort
                 \ time)
 endfunction
 
-function! CreateComparators()
-    let env = vaffle#buffer#get_env()
-    if !has_key(env, 'comparators')
-        let env.comparators = [
-                    \ 'vaffle#sorter#default#compare',
-                    \ { lhs, rhs -> getftime(rhs.path) - getftime(lhs.path) }
-                    \ ]
-    endif
-endfunction
+let g:vaffle_comparator = {
+            \'default': 'vaffle#sorter#default#compare',
+            \'time'   : { lhs, rhs -> getftime(rhs.path) - getftime(lhs.path) }
+            \}
 
 function! g:VaffleGetComparator()
-    call CreateComparators()
-    let env = vaffle#buffer#get_env()
-    return env.comparators[0]
+    return g:vaffle_comparator[b:vaffle_sorter_list[0]]
 endfunction
 
 function! RotateList(list)
@@ -269,13 +266,8 @@ function! RotateList(list)
 endfunction
 
 function! ChangeSortOrder()
-    call CreateComparators()
-    let env = vaffle#buffer#get_env()
-    call RotateList(env.comparators)
+    call RotateList(b:vaffle_sorter_list)
     call vaffle#refresh()
-    let new_env = vaffle#buffer#get_env()
-    let new_env.comparators = env.comparators
-    call vaffle#buffer#redraw()
 endfunction
 
 augroup DuplicateWhenSplitted
