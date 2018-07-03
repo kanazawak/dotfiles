@@ -117,8 +117,11 @@ function! s:vaffle_init()
     nmap <silent><buffer><nowait> <C-k> :call ScrollPreview(-1)<CR>
 
     if !exists('b:vaffle_sorter_list')
-        let b:vaffle_sorter_list = ['default', 'time']
+        let b:vaffle_sorter_list = ['default', 'size', 'time']
     endif
+
+    syntax match VaffleTime "\v.{14}$"
+    syntax match VaffleSize "\v\S+\ze.{16}$"
 
     autocmd BufLeave <buffer>
         \  for item in CursorItem()
@@ -249,9 +252,18 @@ function! g:VaffleCreateLineFromItem(item) abort
 endfunction
 
 let g:vaffle_comparator = {
-            \'default': 'vaffle#sorter#default#compare',
-            \'time'   : { lhs, rhs -> getftime(rhs.path) - getftime(lhs.path) }
-            \}
+    \'default': 'vaffle#sorter#default#compare',
+    \'size': { lhs, rhs ->
+        \ lhs.is_dir != rhs.is_dir
+        \ ? rhs.is_dir - lhs.is_dir
+        \ : lhs.is_dir
+        \ ? len(glob(rhs.path . '/*', 0, 1, 1)) - len(glob(lhs.path . '/*', 0, 1, 1))
+        \ : getfsize(rhs.path) - getfsize(lhs.path) },
+    \'time': { lhs, rhs ->
+        \ lhs.is_dir != rhs.is_dir
+        \ ? rhs.is_dir - lhs.is_dir
+        \ : getftime(rhs.path) - getftime(lhs.path) }
+    \}
 
 function! g:VaffleGetComparator()
     return g:vaffle_comparator[b:vaffle_sorter_list[0]]
@@ -267,6 +279,13 @@ endfunction
 
 function! ChangeSortOrder()
     call RotateList(b:vaffle_sorter_list)
+    highlight! link VaffleTime Normal
+    highlight! link VaffleSize Normal
+    if b:vaffle_sorter_list[0] == 'time'
+        highlight! link VaffleTime Keyword
+    elseif b:vaffle_sorter_list[0] == 'size'
+        highlight! link VaffleSize Keyword
+    endif
     call vaffle#refresh()
 endfunction
 
