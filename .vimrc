@@ -11,6 +11,7 @@ call plug#begin('~/.vim/plugged')
     Plug 'mileszs/ack.vim'
     Plug 'flazz/vim-colorschemes'
     Plug 'vim-airline/vim-airline-themes'
+    Plug 'tpope/vim-fugitive'
 call plug#end()
 
 set backspace=indent,eol,start
@@ -47,6 +48,8 @@ set complete+=k
 
 set encoding=utf8
 set ambiwidth=double
+
+set diffopt+=vertical
 
 nnoremap Y y$
 nnoremap j gj
