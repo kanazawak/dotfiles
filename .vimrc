@@ -123,6 +123,7 @@ function! s:vaffle_init()
         let b:vaffle_sorter_list = ['default', 'size', 'time']
     endif
 
+    setlocal tabstop=1
     syntax match VaffleTime "\v.{14}$"
     syntax match VaffleSize "\v\S+\ze.{16}$"
     highlight! link VaffleTime Normal
@@ -143,18 +144,9 @@ endfunction
 
 function! ToggleSelect()
     for item in CursorItem()
-        if item.selected
-            if item.is_link
-                let icon = (isdirectory(item.path) ? s:icon_link_dir : s:icon_link_file)
-            else
-                let icon = (isdirectory(item.path) ? s:icon_dir : s:icon_file)
-            endif
-        else
-            let icon = s:icon_selected
-        endif
         let item.selected = !item.selected
         setlocal modifiable
-        call setline(line("."), icon . getline(line("."))[3:-1])
+        call setline(line("."), GetIcon(item) . getline(line("."))[3:-1])
         setlocal nomodifiable nomodified
         normal! j0
     endfor
@@ -188,15 +180,8 @@ augroup VaffleAutoCommands
         \  if !Any(tabpagebuflist(), 'getbufvar(v:val, "&filetype") ==# "vaffle"')
         \| pclose
         \| endif
-    autocmd User VaffleRedrawPost if !&previewwindow | call Align() | endif
+    autocmd User VaffleRedrawPost if !&previewwindow | execute 'Tabularize/\t/l0r0r0' | endif
 augroup END
-
-function! Align()
-    if search("\t") > 0
-        Tabularize/\t/l0r0r0
-        %s/\t/  /g
-    endif
-endfunction
 
 function! Preview(item)
     set eventignore=WinNew,BufEnter,BufLeave
@@ -236,21 +221,18 @@ function! TogglePreview()
     end
 endfunction
 
-let s:icon_selected = ''
-let s:icon_link_dir = ''
-let s:icon_link_file = ''
-let s:icon_dir = ''
-let s:icon_file = ''
-
-function! g:VaffleCreateLineFromItem(item) abort
+function! GetIcon(item)
     " require Nerd Fonts
     if a:item.selected
-        let icon = s:icon_selected
+        return ''
     elseif a:item.is_link
-        let icon = (isdirectory(a:item.path) ? s:icon_link_dir : s:icon_link_file)
+        return isdirectory(a:item.path) ? '' : ''
     else
-        let icon = (isdirectory(a:item.path) ? s:icon_dir : s:icon_file)
+        return isdirectory(a:item.path) ? '' : ''
     endif
+endfunction
+
+function! g:VaffleCreateLineFromItem(item) abort
     let env = vaffle#buffer#get_env()
     if &previewwindow
         let time = ''
@@ -266,15 +248,15 @@ function! g:VaffleCreateLineFromItem(item) abort
         let k = 1024
         for unit in ['B', 'K', 'M', 'G', 'T']
             if byte < k
-                let size = (byte * 1024 / k) . unit
+                let size = (byte * 1024 / k) . ' ' . unit
                 break
             else
                 let k = k * 1024
             endif
         endfor
     endif
-    return printf("%s %s%s\t%s\t%s",
-                \ icon,
+    return printf("%s %s%s\t\t%s\t\t%s",
+                \ GetIcon(a:item),
                 \ a:item.basename . (a:item.is_dir ? '/' : ''),
                 \ a:item.is_link ? '  ' . a:item.path: '',
                 \ size,
