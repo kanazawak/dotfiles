@@ -89,12 +89,12 @@ function! s:vaffle_init()
     nnoremap <silent><buffer> l :call GoForward()<CR>
     nnoremap <silent><buffer> <CR> :call Open()<CR>
     nmap <silent><buffer><nowait> <Esc> <Plug>(vaffle-quit)
-    nmap <silent><buffer><nowait> <C-^> <Plug>(vaffle-open-home)
+    nmap <silent><buffer><nowait> ~ <Plug>(vaffle-open-home)
     nmap <silent><buffer><nowait> a :call AddBookmark()<CR>
     nmap <silent><buffer><nowait> b :call ShowBookmark()<CR>
     nmap <silent><buffer><nowait> d <Plug>(vaffle-delete-selected)
     vmap <silent><buffer><nowait> d <Plug>(vaffle-delete-selected)
-    nmap <silent><buffer><nowait> <Tab> <Plug>(vaffle-toggle-current)
+    nmap <silent><buffer><nowait> <Tab> :call ToggleSelect()<CR>
     nmap <silent><buffer><nowait> . <Plug>(vaffle-toggle-hidden)
     nmap <silent><buffer><nowait> ~ <Plug>(vaffle-open-home)
     nmap <silent><buffer><nowait> mv <Plug>(vaffle-move-selected)
@@ -122,6 +122,8 @@ function! s:vaffle_init()
 
     syntax match VaffleTime "\v.{14}$"
     syntax match VaffleSize "\v\S+\ze.{16}$"
+    highlight! link VaffleTime Normal
+    highlight! link VaffleSize Normal
 
     autocmd BufLeave <buffer>
         \  for item in CursorItem()
@@ -134,6 +136,25 @@ function! s:vaffle_init()
         \| call Preview(item)
         \| endif
         \| endfor
+endfunction
+
+function! ToggleSelect()
+    for item in CursorItem()
+        if item.selected
+            if item.is_link
+                let icon = (isdirectory(item.path) ? s:icon_link_dir : s:icon_link_file)
+            else
+                let icon = (isdirectory(item.path) ? s:icon_dir : s:icon_file)
+            endif
+        else
+            let icon = s:icon_selected
+        endif
+        let item.selected = !item.selected
+        setlocal modifiable
+        call setline(line("."), icon . getline(line("."))[3:-1])
+        setlocal nomodifiable nomodified
+        normal! j0
+    endfor
 endfunction
 
 function! ScrollPreview(direction)
@@ -212,14 +233,20 @@ function! TogglePreview()
     end
 endfunction
 
+let s:icon_selected = ''
+let s:icon_link_dir = ''
+let s:icon_link_file = ''
+let s:icon_dir = ''
+let s:icon_file = ''
+
 function! g:VaffleCreateLineFromItem(item) abort
     " require Nerd Fonts
     if a:item.selected
-        let icon = ''
+        let icon = s:icon_selected
     elseif a:item.is_link
-        let icon = (isdirectory(a:item.path) ? '' : '')
+        let icon = (isdirectory(a:item.path) ? s:icon_link_dir : s:icon_link_file)
     else
-        let icon = (isdirectory(a:item.path) ? '' : '')
+        let icon = (isdirectory(a:item.path) ? s:icon_dir : s:icon_file)
     endif
     let env = vaffle#buffer#get_env()
     if &previewwindow
@@ -266,7 +293,11 @@ let g:vaffle_comparator = {
     \}
 
 function! g:VaffleGetComparator()
-    return g:vaffle_comparator[b:vaffle_sorter_list[0]]
+    if &previewwindow
+        return g:vaffle_comparator['default']
+    else
+        return g:vaffle_comparator[b:vaffle_sorter_list[0]]
+    end
 endfunction
 
 function! RotateList(list)
