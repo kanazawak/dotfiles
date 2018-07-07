@@ -125,7 +125,7 @@ function! s:vaffle_init()
 
     setlocal tabstop=1
     syntax match VaffleTime "\v.{14}$"
-    syntax match VaffleSize "\v\S+\ze.{16}$"
+    syntax match VaffleSize "\v\S+( .)?\ze.{16}$"
     highlight! link VaffleTime Normal
     highlight! link VaffleSize Normal
 
