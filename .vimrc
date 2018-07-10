@@ -12,6 +12,8 @@ call plug#begin('~/.vim/plugged')
     Plug 'flazz/vim-colorschemes'
     Plug 'vim-airline/vim-airline-themes'
     Plug 'tpope/vim-fugitive'
+    Plug 'kana/vim-textobj-user'
+    Plug 'rhysd/vim-textobj-ruby'
 call plug#end()
 
 set backspace=indent,eol,start
