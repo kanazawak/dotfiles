@@ -117,9 +117,12 @@ function! s:vaffle_init()
     nmap <silent><buffer><nowait> co :call OperateFileBetweenWindow('copy', 'obtain')<CR>
     nmap <silent><buffer><nowait> x <Plug>(vaffle-fill-cmdline)
     nmap <silent><buffer><nowait> s :call ChangeSortOrder()<CR>
-    nmap <silent><buffer><nowait> p :call TogglePreview()<CR>
+    nmap <silent><buffer><nowait> v :call TogglePreview()<CR>
     nmap <silent><buffer><nowait> <C-j> :call ScrollPreview(1)<CR>
     nmap <silent><buffer><nowait> <C-k> :call ScrollPreview(-1)<CR>
+    nmap <silent><buffer><nowait> gy :call EnterCopyMode()<CR>
+    nmap <silent><buffer><nowait> x :call EnterCutMode()<CR>
+    nmap <silent><buffer><nowait> p :call PasteFile()<CR>
 
     if !exists('b:vaffle_sorter_list')
         let b:vaffle_sorter_list = ['default', 'size', 'time']
@@ -142,6 +145,35 @@ function! s:vaffle_init()
         \| call Preview(item)
         \| endif
         \| endfor
+endfunction
+
+function! EnterCopyMode()
+    for item in CursorItem()
+        let t:copied_path = item.path
+    endfor
+endfunction
+
+function! EnterCutMode()
+    for item in CursorItem()
+        let t:cut_path = item.path
+    endfor
+endfunction
+
+function! PasteFile()
+    if exists('t:copied_path')
+        let command = (g:is_windows ? '!copy' : '!cp')
+        let env = vaffle#buffer#get_env()
+        silent execute command shellescape(t:copied_path) shellescape(env.dir . '/' . fnamemodify(t:copied_path, ':p:t'))
+        redraw!
+        call vaffle#refresh()
+        unlet t:copied_path
+    elseif exists('t:cut_path')
+        let env = vaffle#buffer#get_env()
+        call rename(t:cut_path, env.dir . '/' . fnamemodify(t:cut_path, ':p:t'))
+        redraw!
+        call vaffle#refresh()
+        unlet t:cut_path
+    endif
 endfunction
 
 function! ToggleSelect()
