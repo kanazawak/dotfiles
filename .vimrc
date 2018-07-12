@@ -157,7 +157,6 @@ endfunction
 
 function! EnterCopyCutMode(type)
     for item in CursorItem()
-        call vaffle#refresh()
         if exists('t:copy_cut') && t:copy_cut.type ==# a:type && t:copy_cut.path ==# item.path
             unlet t:copy_cut
         else
@@ -168,6 +167,7 @@ function! EnterCopyCutMode(type)
                 call ChangeIcon(item, '')
             endif
         endif
+        call vaffle#refresh()
     endfor
 endfunction
 
@@ -272,7 +272,9 @@ endfunction
 
 function! GetIcon(item)
     " require Nerd Fonts
-    if a:item.selected
+    if exists('t:copy_cut') && t:copy_cut.path == a:item.path
+        return t:copy_cut.type ==# 'copy' ? '' : ''
+    elseif a:item.selected
         return ''
     elseif a:item.is_link
         return isdirectory(a:item.path) ? '' : ''
