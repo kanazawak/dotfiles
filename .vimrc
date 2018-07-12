@@ -120,8 +120,8 @@ function! s:vaffle_init()
     nmap <silent><buffer><nowait> v :call TogglePreview()<CR>
     nmap <silent><buffer><nowait> <C-j> :call ScrollPreview(1)<CR>
     nmap <silent><buffer><nowait> <C-k> :call ScrollPreview(-1)<CR>
-    nmap <silent><buffer><nowait> gy :call EnterCopyMode()<CR>
-    nmap <silent><buffer><nowait> x :call EnterCutMode()<CR>
+    nmap <silent><buffer><nowait> gy :call EnterCopyCutMode('copy')<CR>
+    nmap <silent><buffer><nowait> x :call EnterCopyCutMode('cut')<CR>
     nmap <silent><buffer><nowait> p :call PasteFile()<CR>
 
     if !exists('b:vaffle_sorter_list')
@@ -131,8 +131,10 @@ function! s:vaffle_init()
     setlocal tabstop=1
     syntax match VaffleTime "\v.{14}$"
     syntax match VaffleSize "\v\S+( .)?\ze.{16}$"
+    syntax match VaffleCopyCut  "\v^[].*"
     highlight! link VaffleTime Normal
     highlight! link VaffleSize Normal
+    highlight! link VaffleCopyCut Error
 
     autocmd BufLeave <buffer>
         \  for item in CursorItem()
@@ -147,33 +149,46 @@ function! s:vaffle_init()
         \| endfor
 endfunction
 
-function! EnterCopyMode()
-    for item in CursorItem()
-        let t:copied_path = item.path
-    endfor
+function! ChangeIcon(item, icon)
+    setlocal modifiable
+    call setline(a:item.index + 1, a:icon . getline(a:item.index + 1)[3:-1])
+    setlocal nomodifiable nomodified
 endfunction
 
-function! EnterCutMode()
+function! EnterCopyCutMode(type)
     for item in CursorItem()
-        let t:cut_path = item.path
+        call vaffle#refresh()
+        if exists('t:copy_cut') && t:copy_cut.type ==# a:type && t:copy_cut.path ==# item.path
+            unlet t:copy_cut
+        else
+            let t:copy_cut = { 'type': a:type, 'path': item.path }
+            if a:type ==# 'copy'
+                call ChangeIcon(item, '')
+            else
+                call ChangeIcon(item, '')
+            endif
+        endif
     endfor
 endfunction
 
 function! PasteFile()
-    if exists('t:copied_path')
-        let command = (g:is_windows ? '!copy' : '!cp')
-        let env = vaffle#buffer#get_env()
-        silent execute command shellescape(t:copied_path) shellescape(env.dir . '/' . fnamemodify(t:copied_path, ':p:t'))
-        redraw!
-        call vaffle#refresh()
-        unlet t:copied_path
-    elseif exists('t:cut_path')
-        let env = vaffle#buffer#get_env()
-        call rename(t:cut_path, env.dir . '/' . fnamemodify(t:cut_path, ':p:t'))
-        redraw!
-        call vaffle#refresh()
-        unlet t:cut_path
+    if !exists('t:copy_cut')
+        return
     endif
+    let env = vaffle#buffer#get_env()
+    if t:copy_cut.type ==# 'copy'
+        let command = (g:is_windows ? '!copy' : '!cp')
+        let from_path = shellescape(t:copy_cut.path)
+        let to_path = shellescape(env.dir . '/' . fnamemodify(t:copy_cut.path, ':p:t'))
+        silent execute command from_path to_path
+        redraw!
+    else
+        let from_path = t:copy_cut.path
+        let to_path = env.dir . '/' . fnamemodify(t:copy_cut.path, ':p:t')
+        call rename(from_path, to_path)
+    endif
+    call vaffle#refresh()
+    unlet t:copy_cut
 endfunction
 
 function! ToggleSelect()
