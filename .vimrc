@@ -155,6 +155,19 @@ function! ChangeIcon(item, icon)
     setlocal nomodifiable nomodified
 endfunction
 
+function! RefreshVaffleWindows()
+    let curr_winnr = winnr()
+    set eventignore=BufEnter
+    windo
+        \  if &filetype ==# 'vaffle'
+        \| let lnum = line('.')
+        \| call vaffle#refresh()
+        \| execute lnum
+        \| endif
+    set eventignore=
+    execute curr_winnr . 'wincmd w'
+endfunction
+
 function! EnterCopyCutMode(type)
     for item in CursorItem()
         if exists('t:copy_cut') && t:copy_cut.type ==# a:type && t:copy_cut.path ==# item.path
@@ -167,7 +180,7 @@ function! EnterCopyCutMode(type)
                 call ChangeIcon(item, '')
             endif
         endif
-        call vaffle#refresh()
+        call RefreshVaffleWindows()
     endfor
 endfunction
 
@@ -176,19 +189,24 @@ function! PasteFile()
         return
     endif
     let env = vaffle#buffer#get_env()
+    let from_path = t:copy_cut.path
+    let to_path = env.dir . '/' . fnamemodify(t:copy_cut.path, ':p:t')
     if t:copy_cut.type ==# 'copy'
         let command = (g:is_windows ? '!copy' : '!cp')
-        let from_path = shellescape(t:copy_cut.path)
-        let to_path = shellescape(env.dir . '/' . fnamemodify(t:copy_cut.path, ':p:t'))
-        silent execute command from_path to_path
+        silent execute command shellescape(from_path) shellescape(to_path)
         redraw!
     else
-        let from_path = t:copy_cut.path
-        let to_path = env.dir . '/' . fnamemodify(t:copy_cut.path, ':p:t')
         call rename(from_path, to_path)
     endif
-    call vaffle#refresh()
     unlet t:copy_cut
+    call RefreshVaffleWindows()
+    let env = vaffle#buffer#get_env()
+    for i in range(0, len(env.items)-1)
+        if env.items[i].path == to_path
+            execute i + 1
+            break
+        endif
+    endfor
 endfunction
 
 function! ToggleSelect()
