@@ -136,9 +136,9 @@ function! s:vaffle_init()
     highlight! link VaffleSize Normal
     highlight! link VaffleCopyCut Error
 
-    autocmd BufLeave <buffer>
+    autocmd WinLeave <buffer>
         \  for item in CursorItem()
-        \| call vaffle#buffer#save_cursor(item)
+        \| call vaffle#window#save_cursor(item)
         \| endfor
 
     autocmd CursorMoved <buffer>
@@ -157,14 +157,12 @@ endfunction
 
 function! RefreshVaffleWindows()
     let curr_winnr = winnr()
-    set eventignore=BufEnter
     windo
         \  if &filetype ==# 'vaffle'
         \| let lnum = line('.')
         \| call vaffle#refresh()
         \| execute lnum
         \| endif
-    set eventignore=
     execute curr_winnr . 'wincmd w'
 endfunction
 
@@ -200,13 +198,7 @@ function! PasteFile()
     endif
     unlet t:copy_cut
     call RefreshVaffleWindows()
-    let env = vaffle#buffer#get_env()
-    for i in range(0, len(env.items)-1)
-        if env.items[i].path == to_path
-            execute i + 1
-            break
-        endif
-    endfor
+    call SearchPath(to_path)
 endfunction
 
 function! ToggleSelect()
@@ -226,10 +218,8 @@ function! ScrollPreview(direction)
     else
         let command = "normal! " . -a:direction . "\<C-y>"
     endif
-    set eventignore=BufEnter
     windo if &previewwindow | execute command | endif
     execute curr_winnr . 'wincmd w'
-    set eventignore=
 endfunction
 
 function! Any(list, predicate)
@@ -374,16 +364,19 @@ function! ChangeSortOrder()
     call vaffle#refresh()
 endfunction
 
-augroup DuplicateWhenSplitted
-    autocmd!
-    autocmd WinNew * call timer_start(0, { ->
-                \ &filetype ==# 'vaffle'
-                \ && vaffle#buffer#duplicate() })
-augroup END
-
 function! CursorItem()
     let items = vaffle#buffer#get_env().items
     return empty(items) ? [] : [items[line(".")-1]]
+endfunction
+
+function! SearchPath(path)
+    let env = vaffle#buffer#get_env()
+    for i in range(0, len(env.items)-1)
+        if env.items[i].path == a:path
+            execute i + 1
+            break
+        endif
+    endfor
 endfunction
 
 function! OperateFile(from_winnr, to_winnr, operation)
@@ -398,10 +391,8 @@ function! OperateFile(from_winnr, to_winnr, operation)
             echoerr "Can\'t copy directory."
         else
             call ExecOperation(item.path, to_path, a:operation)
-            call vaffle#refresh()
-            call search('\V' . item.basename)
-            execute a:from_winnr . 'wincmd w'
-            execute item.index + 1
+            call RefreshVaffleWindows()
+            call SearchPath(to_path)
         endif
     endfor
     execute curr_winnr . 'wincmd w'
