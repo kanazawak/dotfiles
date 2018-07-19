@@ -103,10 +103,6 @@ function! s:vaffle_init()
     nmap <silent><buffer><nowait> . <Plug>(vaffle-toggle-hidden)
     nmap <silent><buffer><nowait> ~ <Plug>(vaffle-open-home)
     nmap <silent><buffer><nowait> mv <Plug>(vaffle-move-selected)
-    nmap <silent><buffer><nowait> f :call FindChar(1)<CR>
-    nmap <silent><buffer><nowait> F :call FindChar(-1)<CR>
-    nmap <silent><buffer><nowait> ; :call RepeatFindChar(1)<CR>
-    nmap <silent><buffer><nowait> , :call RepeatFindChar(-1)<CR>
     nmap <silent><buffer><nowait> R <Plug>(vaffle-refresh)
     nmap <silent><buffer><nowait> o <Plug>(vaffle-new-file)
     nmap <silent><buffer><nowait> O <Plug>(vaffle-mkdir)
@@ -430,37 +426,6 @@ function! FindOtherVaffle()
     endfor
     execute curr_winnr . 'wincmd w'
     return len(wins) == 1 ? wins : []
-endfunction
-
-function! JumpToChar(direction, char)
-    let items = vaffle#buffer#get_env().items
-    let j = line(".")
-    while v:true
-        let j += a:direction
-        if j <= 0 || j > len(items)
-            return
-        end
-        if items[j-1].basename =~? '\v^\.?\V' . a:char
-            execute j
-            break
-        endif
-    endwhile
-endfunction
-
-function! FindChar(direction)
-    let char = getchar()
-    if type(char) == type(0)
-        let char = nr2char(char)
-    endif
-    call JumpToChar(a:direction, char)
-    let b:find_char_direction = a:direction
-    let b:find_char_target = char
-endfunction
-
-function! RepeatFindChar(direction)
-    if exists("b:find_char_direction") && exists("b:find_char_target")
-        call JumpToChar(b:find_char_direction * a:direction, b:find_char_target)
-    endif
 endfunction
 
 function! AddBookmark()
