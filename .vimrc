@@ -54,8 +54,6 @@ set ambiwidth=double
 set diffopt+=vertical
 
 nnoremap Y y$
-nnoremap j gj
-nnoremap k gk
 
 let g:is_windows = has('win32') || has ('win64')
 
@@ -131,11 +129,6 @@ function! s:vaffle_init()
     highlight! link VaffleTime Normal
     highlight! link VaffleSize Normal
     highlight! link VaffleCopyCut Error
-
-    autocmd WinLeave <buffer>
-        \  for item in CursorItem()
-        \| call vaffle#window#save_cursor(item)
-        \| endfor
 
     autocmd CursorMoved <buffer>
         \  for item in CursorItem()
