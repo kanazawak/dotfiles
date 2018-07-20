@@ -61,20 +61,16 @@ let g:is_windows = has('win32') || has ('win64')
 function! StartExplorer()
     if &filetype ==# 'vaffle'
         if g:is_windows
-            let env = vaffle#buffer#get_env()
-            execute "!start" env.dir
+            execute "!start" shellescape(expand('%'))
         endif
     else
+        let path = expand('%:p')
         let basename = expand("%:t")
         execute 'Vaffle' expand("%:p:h")
         if basename =~# '\v^\.'
             execute "normal \<Plug>(vaffle-toggle-hidden)"
         endif
-        let env = vaffle#buffer#get_env()
-        let a = filter(copy(env.items), 'v:val.basename ==# basename')
-        if !empty(a)
-            execute a[0].index + 1
-        endif
+        call SearchPath(path)
     endif
 endfunction
 noremap <silent> <Space>e :call StartExplorer()<CR>
@@ -97,7 +93,7 @@ function! s:vaffle_init()
     nmap <silent><buffer><nowait> b :call ShowBookmark()<CR>
     nmap <silent><buffer><nowait> d <Plug>(vaffle-delete-selected)
     vmap <silent><buffer><nowait> d <Plug>(vaffle-delete-selected)
-    nmap <silent><buffer><nowait> <Tab> :call ToggleSelect()<CR>
+    nmap <silent><buffer><nowait> <Tab> <Plug>(vaffle-toggle-current)
     nmap <silent><buffer><nowait> . <Plug>(vaffle-toggle-hidden)
     nmap <silent><buffer><nowait> ~ <Plug>(vaffle-open-home)
     nmap <silent><buffer><nowait> mv <Plug>(vaffle-move-selected)
@@ -138,12 +134,6 @@ function! s:vaffle_init()
         \| endfor
 endfunction
 
-function! ChangeIcon(item, icon)
-    setlocal modifiable
-    call setline(a:item.index + 1, a:icon . getline(a:item.index + 1)[3:-1])
-    setlocal nomodifiable nomodified
-endfunction
-
 function! RefreshVaffleWindows()
     let curr_winnr = winnr()
     windo
@@ -161,11 +151,6 @@ function! EnterCopyCutMode(type)
             unlet t:copy_cut
         else
             let t:copy_cut = { 'type': a:type, 'path': item.path }
-            if a:type ==# 'copy'
-                call ChangeIcon(item, '')
-            else
-                call ChangeIcon(item, '')
-            endif
         endif
         call RefreshVaffleWindows()
     endfor
@@ -175,9 +160,8 @@ function! PasteFile()
     if !exists('t:copy_cut')
         return
     endif
-    let env = vaffle#buffer#get_env()
     let from_path = t:copy_cut.path
-    let to_path = env.dir . '/' . fnamemodify(t:copy_cut.path, ':p:t')
+    let to_path = expand('%:p') . fnamemodify(t:copy_cut.path, ':p:t')
     if t:copy_cut.type ==# 'copy'
         let command = (g:is_windows ? '!copy' : '!cp')
         silent execute command shellescape(from_path) shellescape(to_path)
@@ -188,16 +172,6 @@ function! PasteFile()
     unlet t:copy_cut
     call RefreshVaffleWindows()
     call SearchPath(to_path)
-endfunction
-
-function! ToggleSelect()
-    for item in CursorItem()
-        let item.selected = !item.selected
-        setlocal modifiable
-        call setline(line("."), GetIcon(item) . getline(line("."))[3:-1])
-        setlocal nomodifiable nomodified
-        normal! j0
-    endfor
 endfunction
 
 function! ScrollPreview(direction)
@@ -226,7 +200,6 @@ augroup VaffleAutoCommands
         \  if !Any(tabpagebuflist(), 'getbufvar(v:val, "&filetype") ==# "vaffle"')
         \| pclose
         \| endif
-    autocmd User VaffleRedrawPost if !&previewwindow | execute 'Tabularize/\t/l0r0r0' | endif
 augroup END
 
 function! Preview(item)
@@ -281,7 +254,6 @@ function! GetIcon(item)
 endfunction
 
 function! g:VaffleCreateLineFromItem(item) abort
-    let env = vaffle#buffer#get_env()
     if &previewwindow
         let time = ''
     else
@@ -303,12 +275,31 @@ function! g:VaffleCreateLineFromItem(item) abort
             endif
         endfor
     endif
-    return printf("%s %s%s\t\t%s\t\t%s",
+    let b:names_width = get(b:, 'names_width', CalcNamesWidth())
+    let name = printf("%s%s",
+        \ a:item.basename . (a:item.is_dir ? '/' : ''),
+        \ a:item.is_link ? '  ' . a:item.path: '')
+    let padding = repeat(' ', b:names_width - strdisplaywidth(name))
+    return printf("%s %s%s%s %s",
                 \ GetIcon(a:item),
-                \ a:item.basename . (a:item.is_dir ? '/' : ''),
-                \ a:item.is_link ? '  ' . a:item.path: '',
-                \ size,
+                \ name,
+                \ padding,
+                \ printf("%7s", size),
                 \ time)
+endfunction
+
+function! CalcNamesWidth()
+    let max_width = 0
+    for item in vaffle#buffer#get_env().items
+        let disp = printf("%s%s",
+            \ item.basename . (item.is_dir ? '/' : ''),
+            \ item.is_link ? '  ' . item.path: '')
+        let width = strdisplaywidth(disp)
+        if width > max_width
+            let max_width = width
+        endif
+    endfor
+    return max_width
 endfunction
 
 let g:vaffle_comparator = {
@@ -360,9 +351,9 @@ endfunction
 
 function! SearchPath(path)
     let env = vaffle#buffer#get_env()
-    for i in range(0, len(env.items)-1)
-        if env.items[i].path == a:path
-            execute i + 1
+    for i in range(1, len(env.items))
+        if env.items[i-1].path ==# a:path
+            execute i
             break
         endif
     endfor
@@ -373,7 +364,7 @@ function! OperateFile(from_winnr, to_winnr, operation)
     execute a:from_winnr . 'wincmd w'
     for item in CursorItem()
         execute a:to_winnr . 'wincmd w'
-        let to_path = vaffle#buffer#get_env().dir . '/' . item.basename
+        let to_path = expand('%:p') . item.basename
         if filereadable(to_path) || isdirectory(to_path)
             echoerr 'File exists.'
         elseif a:operation ==# 'copy' && item.is_dir
@@ -497,9 +488,7 @@ endtry
 nnoremap <Space>r :call ExecuteThisFile()<CR>
 
 function! s:find_file()
-    let env = vaffle#buffer#get_env()
-    let dir = (&filetype ==# 'vaffle' ? env.dir : getcwd())
-    let dir = shellescape(dir)
+    let dir = shellescape((&filetype ==# 'vaffle' ? expand('%') : getcwd()))
     if g:is_windows
         let dir = iconv(dir, &encoding, "cp932")
         let source = printf("rg --files --hidden %s 2> nul", dir)
@@ -524,8 +513,7 @@ nnoremap <Space>g :Rg<Space>
 command! -nargs=1 Rg call s:rg(<f-args>)
 function! s:rg(str)
     if &filetype ==# 'vaffle'
-        let env = vaffle#buffer#get_env()
-        execute "Ack" a:str env.dir
+        execute "Ack" a:str fnameescape(expand('%'))
         execute "normal \<CR>"
     else
         execute "Ack" a:str
@@ -543,8 +531,7 @@ nnoremap ][h :helpclose<CR>
 
 function! s:start_shell()
     if &filetype ==# 'vaffle'
-        let env = vaffle#buffer#get_env()
-        call term_start(&shell, {'term_finish': 'close', 'cwd': env.dir})
+        call term_start(&shell, {'term_finish': 'close', 'cwd': expand('%')})
     else
         call term_start(&shell, {'term_finish': 'close', 'cwd': expand("%:p:h")})
     endif
