@@ -110,8 +110,8 @@ function! s:vaffle_init()
     nmap <silent><buffer><nowait> v :call TogglePreview()<CR>
     nmap <silent><buffer><nowait> <C-j> :call ScrollPreview(1)<CR>
     nmap <silent><buffer><nowait> <C-k> :call ScrollPreview(-1)<CR>
-    nmap <silent><buffer><nowait> gy :call EnterCopyCutMode('copy')<CR>
-    nmap <silent><buffer><nowait> x :call EnterCopyCutMode('cut')<CR>
+    nmap <silent><buffer><nowait> gy :call EnterCopyMoveMode('copy')<CR>
+    nmap <silent><buffer><nowait> x :call EnterCopyMoveMode('move')<CR>
     nmap <silent><buffer><nowait> p :call PasteFile()<CR>
 
     if !exists('b:vaffle_sorter_list')
@@ -121,10 +121,10 @@ function! s:vaffle_init()
     setlocal tabstop=1
     syntax match VaffleTime "\v.{14}$"
     syntax match VaffleSize "\v\S+( .)?\ze.{16}$"
-    syntax match VaffleCopyCut  "\v^[].*"
+    syntax match VaffleCopyMove  "\v^[].*"
     highlight! link VaffleTime Normal
     highlight! link VaffleSize Normal
-    highlight! link VaffleCopyCut Error
+    highlight! link VaffleCopyMove Error
 
     autocmd CursorMoved <buffer>
         \  for item in CursorItem()
@@ -145,31 +145,32 @@ function! RefreshVaffleWindows()
     execute curr_winnr . 'wincmd w'
 endfunction
 
-function! EnterCopyCutMode(type)
+function! EnterCopyMoveMode(type)
     for item in CursorItem()
-        if exists('t:copy_cut') && t:copy_cut.type ==# a:type && t:copy_cut.path ==# item.path
-            unlet t:copy_cut
+        if exists('t:copy_move') && t:copy_move.type ==# a:type && t:copy_move.path ==# item.path
+            unlet t:copy_move
         else
-            let t:copy_cut = { 'type': a:type, 'path': item.path }
+            let t:copy_move = { 'type': a:type, 'path': item.path }
         endif
         call RefreshVaffleWindows()
     endfor
 endfunction
 
 function! PasteFile()
-    if !exists('t:copy_cut')
+    if !exists('t:copy_move')
         return
     endif
-    let from_path = t:copy_cut.path
-    let to_path = expand('%:p') . fnamemodify(t:copy_cut.path, ':p:t')
-    if t:copy_cut.type ==# 'copy'
-        let command = (g:is_windows ? '!copy' : '!cp')
-        silent execute command shellescape(from_path) shellescape(to_path)
-        redraw!
-    else
-        call rename(from_path, to_path)
+    let from_path = t:copy_move.path
+    let to_path = expand('%:p') . fnamemodify(t:copy_move.path, ':t')
+    if filereadable(to_path) || isdirectory(to_path)
+        echoerr 'File exists.'
+        return
+    elseif t:copy_move.type ==# 'copy' && item.is_dir
+        echoerr "Can\'t copy directory."
+        return
     endif
-    unlet t:copy_cut
+    call ExecOperation(from_path, to_path, t:copy_move.type)
+    unlet t:copy_move
     call RefreshVaffleWindows()
     call SearchPath(to_path)
 endfunction
@@ -242,8 +243,8 @@ endfunction
 
 function! GetIcon(item)
     " require Nerd Fonts
-    if exists('t:copy_cut') && t:copy_cut.path == a:item.path
-        return t:copy_cut.type ==# 'copy' ? '' : ''
+    if exists('t:copy_move') && t:copy_move.path == a:item.path
+        return t:copy_move.type ==# 'copy' ? '' : ''
     elseif a:item.selected
         return ''
     elseif a:item.is_link
@@ -275,10 +276,10 @@ function! g:VaffleCreateLineFromItem(item) abort
             endif
         endfor
     endif
-    let b:names_width = get(b:, 'names_width', CalcNamesWidth())
-    let name = printf("%s%s",
-        \ a:item.basename . (a:item.is_dir ? '/' : ''),
-        \ a:item.is_link ? '  ' . a:item.path: '')
+    if !exists('b:names_width')
+        let b:names_width = CalcNamesWidth()
+    endif
+    let name = GetLabel(a:item)
     let padding = repeat(' ', b:names_width - strdisplaywidth(name))
     return printf("%s %s%s%s %s",
                 \ GetIcon(a:item),
@@ -288,18 +289,15 @@ function! g:VaffleCreateLineFromItem(item) abort
                 \ time)
 endfunction
 
-function! CalcNamesWidth()
-    let max_width = 0
-    for item in vaffle#buffer#get_env().items
-        let disp = printf("%s%s",
-            \ item.basename . (item.is_dir ? '/' : ''),
-            \ item.is_link ? '  ' . item.path: '')
-        let width = strdisplaywidth(disp)
-        if width > max_width
-            let max_width = width
-        endif
-    endfor
-    return max_width
+function! GetLabel(item) abort
+    return printf("%s%s",
+        \ a:item.basename . (a:item.is_dir ? '/' : ''),
+        \ a:item.is_link ? '  ' . a:item.path: '')
+endfunction
+
+function! CalcNamesWidth() abort
+    let items = copy(vaffle#buffer#get_env().items)
+    return max(map(items, 'strdisplaywidth(GetLabel(v:val))'))
 endfunction
 
 let g:vaffle_comparator = {
