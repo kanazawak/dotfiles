@@ -99,7 +99,7 @@ function! s:vaffle_init()
     nnoremap <silent><buffer><nowait> cp    :call OperateFileBetweenWindow('copy', 'put')<CR>
     nnoremap <silent><buffer><nowait> co    :call OperateFileBetweenWindow('copy', 'obtain')<CR>
     nnoremap <silent><buffer><nowait> s     :call ChangeSortOrder()<CR>
-    nnoremap <silent><buffer><nowait> v     :call TogglePreview()<CR>
+    nnoremap <silent><buffer><nowait> []v   :call Preview()<CR>
     nnoremap <silent><buffer><nowait> <C-j> :call ScrollPreview(1)<CR>
     nnoremap <silent><buffer><nowait> <C-k> :call ScrollPreview(-1)<CR>
     nnoremap <silent><buffer><nowait> gy    :call EnterCopyMoveMode('copy')<CR>
@@ -118,12 +118,7 @@ function! s:vaffle_init()
     highlight! link VaffleSize Normal
     highlight! link VaffleCopyMove Error
 
-    autocmd CursorMoved <buffer>
-        \  for item in CursorItem()
-        \| if Previewing()
-        \| call Preview(item)
-        \| endif
-        \| endfor
+    autocmd CursorMoved <buffer> if Previewing() | call Preview() | endif
 endfunction
 
 function! RefreshVaffleWindows()
@@ -195,17 +190,19 @@ augroup VaffleAutoCommands
         \| endif
 augroup END
 
-function! Preview(item)
-    set eventignore=WinNew,BufEnter,BufLeave
-    let limit = 1024 * 1024
-    if getfsize(a:item.path) >= limit
-        execute printf('pedit +call\ PreviewLargeFileCallback() %s', tempname())
-    elseif buflisted(a:item.path)
-        execute 'pedit +setlocal\ nocursorline' a:item.path
-    else
-        execute printf('pedit +call\ PreviewCallback() %s', a:item.path)
-    endif
-    set eventignore=
+function! Preview()
+    for item in CursorItem()
+        set eventignore=WinNew,BufEnter,BufLeave
+        let limit = 1024 * 1024
+        if getfsize(item.path) >= limit
+            execute printf('pedit +call\ PreviewLargeFileCallback() %s', tempname())
+        elseif buflisted(item.path)
+            execute 'pedit +setlocal\ nocursorline' item.path
+        else
+            execute printf('pedit +call\ PreviewCallback() %s', item.path)
+        endif
+        set eventignore=
+    endfor
 endfunction
 
 function! PreviewLargeFileCallback()
@@ -220,16 +217,6 @@ function! PreviewCallback()
         let env.items = vaffle#env#create_items(env)
         let b:vaffle = env
         call vaffle#buffer#redraw()
-    end
-endfunction
-
-function! TogglePreview()
-    if Previewing()
-        pclose
-    else
-        for item in CursorItem()
-            call Preview(item)
-        endfor
     end
 endfunction
 
@@ -518,6 +505,7 @@ nnoremap ]]q :cnfile<CR>
 nnoremap []q :copen<CR>
 nnoremap ][q :cclose<CR>
 nnoremap ][h :helpclose<CR>
+nnoremap ][v :pclose<CR>
 
 function! s:start_shell()
     if &filetype ==# 'vaffle'
