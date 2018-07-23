@@ -75,7 +75,6 @@ function! StartExplorer()
 endfunction
 noremap <silent> <Space>e :call StartExplorer()<CR>
 
-let g:vaffle_use_default_mappings = 0
 augroup vaffle_config
     autocmd!
     autocmd FileType vaffle silent! call s:vaffle_init()
@@ -83,36 +82,29 @@ augroup END
 
 let g:bookmark_file_path = $HOME . '/.vim/.bookmark'
 
+let g:vaffle_use_default_mappings = 1
 function! s:vaffle_init()
-    nmap <silent><buffer> h <Plug>(vaffle-open-parent)
-    nnoremap <silent><buffer> l :call GoForward()<CR>
-    nnoremap <silent><buffer> <CR> :call Open()<CR>
-    nmap <silent><buffer><nowait> <Esc> <Plug>(vaffle-quit)
-    nmap <silent><buffer><nowait> ~ <Plug>(vaffle-open-home)
-    nmap <silent><buffer><nowait> a :call AddBookmark()<CR>
-    nmap <silent><buffer><nowait> b :call ShowBookmark()<CR>
-    nmap <silent><buffer><nowait> d <Plug>(vaffle-delete-selected)
-    vmap <silent><buffer><nowait> d <Plug>(vaffle-delete-selected)
-    nmap <silent><buffer><nowait> <Tab> <Plug>(vaffle-toggle-current)
-    nmap <silent><buffer><nowait> . <Plug>(vaffle-toggle-hidden)
-    nmap <silent><buffer><nowait> ~ <Plug>(vaffle-open-home)
-    nmap <silent><buffer><nowait> mv <Plug>(vaffle-move-selected)
-    nmap <silent><buffer><nowait> R <Plug>(vaffle-refresh)
-    nmap <silent><buffer><nowait> o <Plug>(vaffle-new-file)
-    nmap <silent><buffer><nowait> O <Plug>(vaffle-mkdir)
-    nmap <silent><buffer><nowait> r <Plug>(vaffle-rename-selected)
-    nmap <silent><buffer><nowait> mp :call OperateFileBetweenWindow('move', 'put')<CR>
-    nmap <silent><buffer><nowait> mo :call OperateFileBetweenWindow('move', 'obtain')<CR>
-    nmap <silent><buffer><nowait> cp :call OperateFileBetweenWindow('copy', 'put')<CR>
-    nmap <silent><buffer><nowait> co :call OperateFileBetweenWindow('copy', 'obtain')<CR>
-    nmap <silent><buffer><nowait> x <Plug>(vaffle-fill-cmdline)
-    nmap <silent><buffer><nowait> s :call ChangeSortOrder()<CR>
-    nmap <silent><buffer><nowait> v :call TogglePreview()<CR>
-    nmap <silent><buffer><nowait> <C-j> :call ScrollPreview(1)<CR>
-    nmap <silent><buffer><nowait> <C-k> :call ScrollPreview(-1)<CR>
-    nmap <silent><buffer><nowait> gy :call EnterCopyMoveMode('copy')<CR>
-    nmap <silent><buffer><nowait> x :call EnterCopyMoveMode('move')<CR>
-    nmap <silent><buffer><nowait> p :call PasteFile()<CR>
+    unmap <buffer> <Space>
+    unmap <buffer> m
+    unmap <buffer> i
+    nmap     <silent><buffer><nowait> <Tab> <Plug>(vaffle-toggle-current)
+    nmap     <silent><buffer><nowait> o     <Plug>(vaffle-new-file)
+    nmap     <silent><buffer><nowait> O     <Plug>(vaffle-mkdir)
+    nnoremap <silent><buffer><nowait> l     :call GoForward()<CR>
+    nnoremap <silent><buffer><nowait> <CR>  :call Open()<CR>
+    nnoremap <silent><buffer><nowait> a     :call AddBookmark()<CR>
+    nnoremap <silent><buffer><nowait> b     :call ShowBookmark()<CR>
+    nnoremap <silent><buffer><nowait> mp    :call OperateFileBetweenWindow('move', 'put')<CR>
+    nnoremap <silent><buffer><nowait> mo    :call OperateFileBetweenWindow('move', 'obtain')<CR>
+    nnoremap <silent><buffer><nowait> cp    :call OperateFileBetweenWindow('copy', 'put')<CR>
+    nnoremap <silent><buffer><nowait> co    :call OperateFileBetweenWindow('copy', 'obtain')<CR>
+    nnoremap <silent><buffer><nowait> s     :call ChangeSortOrder()<CR>
+    nnoremap <silent><buffer><nowait> v     :call TogglePreview()<CR>
+    nnoremap <silent><buffer><nowait> <C-j> :call ScrollPreview(1)<CR>
+    nnoremap <silent><buffer><nowait> <C-k> :call ScrollPreview(-1)<CR>
+    nnoremap <silent><buffer><nowait> gy    :call EnterCopyMoveMode('copy')<CR>
+    nnoremap <silent><buffer><nowait> gx    :call EnterCopyMoveMode('move')<CR>
+    nnoremap <silent><buffer><nowait> p     :call PasteFile()<CR>
 
     if !exists('b:vaffle_sorter_list')
         let b:vaffle_sorter_list = ['default', 'size', 'time']
