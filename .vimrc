@@ -110,8 +110,7 @@ function! s:vaffle_init()
         let b:vaffle_sorter_list = ['default', 'size', 'time']
     endif
 
-    setlocal tabstop=1
-    syntax match VaffleTime "\v.{14}$"
+    syntax match VaffleTime "\v.{15}$"
     syntax match VaffleSize "\v\S+( .)?\ze.{16}$"
     syntax match VaffleCopyMove  "\v^[].*"
     highlight! link VaffleTime Normal
@@ -164,12 +163,10 @@ endfunction
 
 function! ScrollPreview(direction)
     let curr_winnr = winnr()
-    if a:direction >= 0
-        let command = "normal! " . a:direction . "\<C-e>"
-    else
-        let command = "normal! " . -a:direction . "\<C-y>"
-    endif
+    let command = "normal! " . (a:direction > 0 ? "\<C-e>" : "\<C-y>")
+    set ei=all
     windo if &previewwindow | execute command | endif
+    set ei=
     execute curr_winnr . 'wincmd w'
 endfunction
 
@@ -416,7 +413,7 @@ endfunction
 
 function! GoForward()
     for item in CursorItem()
-        if isdirectory(item.path)
+        if item.is_dir
             call vaffle#open_current('')
         endif
     endfor
