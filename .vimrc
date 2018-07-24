@@ -66,7 +66,7 @@ function! StartExplorer()
     else
         let path = expand('%:p')
         let basename = expand("%:t")
-        execute 'Vaffle' expand("%:p:h")
+        execute 'edit' expand("%:p:h")
         if basename =~# '\v^\.'
             execute "normal \<Plug>(vaffle-toggle-hidden)"
         endif
@@ -87,6 +87,8 @@ function! s:vaffle_init()
     unmap <buffer> <Space>
     unmap <buffer> m
     unmap <buffer> i
+    unmap <buffer> q
+    nmap     <silent><buffer><nowait> Q     <Plug>(vaffle-quit)
     nmap     <silent><buffer><nowait> <Tab> <Plug>(vaffle-toggle-current)
     nmap     <silent><buffer><nowait> o     <Plug>(vaffle-new-file)
     nmap     <silent><buffer><nowait> O     <Plug>(vaffle-mkdir)
@@ -164,9 +166,9 @@ endfunction
 function! ScrollPreview(direction)
     let curr_winnr = winnr()
     let command = "normal! " . (a:direction > 0 ? "\<C-e>" : "\<C-y>")
-    set ei=all
+    set eventignore=all
     windo if &previewwindow | execute command | endif
-    set ei=
+    set eventignore=
     execute curr_winnr . 'wincmd w'
 endfunction
 
@@ -189,7 +191,6 @@ augroup END
 
 function! Preview()
     for item in CursorItem()
-        set eventignore=WinNew,BufEnter,BufLeave
         let limit = 1024 * 1024
         if getfsize(item.path) >= limit
             execute printf('pedit +call\ PreviewLargeFileCallback() %s', tempname())
@@ -198,7 +199,6 @@ function! Preview()
         else
             execute printf('pedit +call\ PreviewCallback() %s', item.path)
         endif
-        set eventignore=
     endfor
 endfunction
 
