@@ -101,9 +101,6 @@ function! s:vaffle_init()
     nnoremap <silent><buffer><nowait> cp    :call OperateFileBetweenWindow('copy', 'put')<CR>
     nnoremap <silent><buffer><nowait> co    :call OperateFileBetweenWindow('copy', 'obtain')<CR>
     nnoremap <silent><buffer><nowait> s     :call ChangeSortOrder()<CR>
-    nnoremap <silent><buffer><nowait> []v   :call Preview()<CR>
-    nnoremap <silent><buffer><nowait> <C-j> :call ScrollPreview(1)<CR>
-    nnoremap <silent><buffer><nowait> <C-k> :call ScrollPreview(-1)<CR>
     nnoremap <silent><buffer><nowait> gy    :call EnterCopyMoveMode('copy')<CR>
     nnoremap <silent><buffer><nowait> gx    :call EnterCopyMoveMode('move')<CR>
     nnoremap <silent><buffer><nowait> p     :call PasteFile()<CR>
@@ -118,8 +115,6 @@ function! s:vaffle_init()
     highlight! link VaffleTime Normal
     highlight! link VaffleSize Normal
     highlight! link VaffleCopyMove Error
-
-    autocmd CursorMoved <buffer> if Previewing() | call Preview() | endif
 endfunction
 
 function! RefreshVaffleWindows()
@@ -163,60 +158,6 @@ function! PasteFile()
     call SearchPath(to_path)
 endfunction
 
-function! ScrollPreview(direction)
-    let curr_winnr = winnr()
-    let command = "normal! " . (a:direction > 0 ? "\<C-e>" : "\<C-y>")
-    set eventignore=all
-    windo if &previewwindow | execute command | endif
-    set eventignore=
-    execute curr_winnr . 'wincmd w'
-endfunction
-
-function! Any(list, predicate)
-    return !empty(filter(a:list, a:predicate))
-endfunction
-
-function! Previewing()
-    return Any(range(1, winnr('$')), 'getwinvar(v:val, "&previewwindow") == 1')
-endfunction
-
-augroup VaffleAutoCommands
-    autocmd!
-    autocmd BufEnter * if !&previewwindow | doautocmd filetypedetect BufRead | endif
-    autocmd BufEnter *
-        \  if !Any(tabpagebuflist(), 'getbufvar(v:val, "&filetype") ==# "vaffle"')
-        \| pclose
-        \| endif
-augroup END
-
-function! Preview()
-    for item in CursorItem()
-        let limit = 1024 * 1024
-        if getfsize(item.path) >= limit
-            execute printf('pedit +call\ PreviewLargeFileCallback() %s', tempname())
-        elseif buflisted(item.path)
-            execute 'pedit +setlocal\ nocursorline' item.path
-        else
-            execute printf('pedit +call\ PreviewCallback() %s', item.path)
-        endif
-    endfor
-endfunction
-
-function! PreviewLargeFileCallback()
-    call setline(1, ' (Too large for preview)')
-    setlocal nomodifiable nomodified nobuflisted bufhidden=wipe
-endfunction
-
-function! PreviewCallback()
-    setlocal nocursorline nobuflisted noswapfile
-    if isdirectory(expand("%"))
-        let env = vaffle#env#create(expand("%"))
-        let env.items = vaffle#env#create_items(env)
-        let b:vaffle = env
-        call vaffle#buffer#redraw()
-    end
-endfunction
-
 function! GetIcon(item)
     " require Nerd Fonts
     if exists('t:copy_move') && t:copy_move.path == a:item.path
@@ -231,14 +172,8 @@ function! GetIcon(item)
 endfunction
 
 function! g:VaffleCreateLineFromItem(item) abort
-    if &previewwindow
-        let time = ''
-    else
-        let time = strftime("%y/%m/%d %H:%M ", getftime(a:item.path))
-    endif
-    if &previewwindow
-        let size = ''
-    elseif a:item.is_dir
+    let time = strftime("%y/%m/%d %H:%M ", getftime(a:item.path))
+    if a:item.is_dir
         let size = len(glob(a:item.path . '/*', 0, 1, 1))
     else
         let byte = getfsize(a:item.path)
@@ -291,11 +226,7 @@ let g:vaffle_comparator = {
     \}
 
 function! g:VaffleGetComparator()
-    if &previewwindow
-        return g:vaffle_comparator['default']
-    else
-        return g:vaffle_comparator[b:vaffle_sorter_list[0]]
-    end
+    return g:vaffle_comparator[b:vaffle_sorter_list[0]]
 endfunction
 
 function! RotateList(list)
@@ -502,7 +433,6 @@ nnoremap ]]q :cnfile<CR>
 nnoremap []q :copen<CR>
 nnoremap ][q :cclose<CR>
 nnoremap ][h :helpclose<CR>
-nnoremap ][v :pclose<CR>
 
 function! s:start_shell()
     if &filetype ==# 'vaffle'
