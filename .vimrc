@@ -119,15 +119,10 @@ function! s:vaffle_init()
     nnoremap <silent><buffer><nowait> <Space>f :call FindFile()<CR>
     nnoremap <silent><buffer><nowait> <Space>g :call Rg()<CR>
 
-    if !exists('b:vaffle_sorter_list')
-        let b:vaffle_sorter_list = ['default', 'size', 'time']
-    endif
+    let b:vaffle_sorter = 'default'
 
-    syntax match VaffleTime "\v.{15}$"
-    syntax match VaffleSize "\v\S+( .)?\ze.{16}$"
+    highlight! link VaffleSorter Keyword
     syntax match VaffleCopyMove  "\v^[].*"
-    highlight! link VaffleTime Normal
-    highlight! link VaffleSize Normal
     highlight! link VaffleCopyMove Error
 endfunction
 
@@ -159,17 +154,23 @@ function! PasteFile()
     endif
     let from_path = t:copy_move.path
     let to_path = expand('%:p') . fnamemodify(t:copy_move.path, ':t')
-    if filereadable(to_path) || isdirectory(to_path)
-        echoerr 'File exists.'
-        return
-    elseif t:copy_move.type ==# 'copy' && item.is_dir
-        echoerr "Can\'t copy directory."
-        return
+    if CheckOperable(from_path, to_path, t:copy_move.type)
+        call ExecOperation(from_path, to_path, t:copy_move.type)
+        unlet t:copy_move
+        call RefreshVaffleWindows()
+        call SearchPath(to_path)
     endif
-    call ExecOperation(from_path, to_path, t:copy_move.type)
-    unlet t:copy_move
-    call RefreshVaffleWindows()
-    call SearchPath(to_path)
+endfunction
+
+function! CheckOperable(from_path, to_path, type)
+    if filereadable(a:to_path) || isdirectory(a:to_path)
+        echoerr 'File exists.'
+        return v:false
+    elseif a:type ==# 'copy' && isdirectory(a:from_path)
+        echoerr "Can\'t copy directory."
+        return v:false
+    endif
+    return v:true
 endfunction
 
 function! GetIcon(item)
@@ -240,25 +241,21 @@ let g:vaffle_comparator = {
     \}
 
 function! g:VaffleGetComparator()
-    return g:vaffle_comparator[b:vaffle_sorter_list[0]]
-endfunction
-
-function! RotateList(list)
-    let orig = copy(a:list)
-    let n = len(a:list)
-    for i in range(1, n)
-        let a:list[i - 1] = orig[i % n]
-    endfor
+    return g:vaffle_comparator[b:vaffle_sorter]
 endfunction
 
 function! ChangeSortOrder()
-    call RotateList(b:vaffle_sorter_list)
-    highlight! link VaffleTime Normal
-    highlight! link VaffleSize Normal
-    if b:vaffle_sorter_list[0] == 'time'
-        highlight! link VaffleTime Keyword
-    elseif b:vaffle_sorter_list[0] == 'size'
-        highlight! link VaffleSize Keyword
+    let b:vaffle_sorter = {
+        \ 'default' : 'size',
+        \ 'size'    : 'time',
+        \ 'time'    : 'default'
+        \}[b:vaffle_sorter]
+
+    syntax clear VaffleSorter
+    if b:vaffle_sorter == 'time'
+        syntax match VaffleSorter "\v.{15}$"
+    elseif b:vaffle_sorter == 'size'
+        syntax match VaffleSorter "\v\S+( .)?\ze.{16}$"
     endif
     call vaffle#refresh()
 endfunction
@@ -284,11 +281,7 @@ function! OperateFile(from_winnr, to_winnr, operation)
     for item in CursorItem()
         execute a:to_winnr . 'wincmd w'
         let to_path = expand('%:p') . item.basename
-        if filereadable(to_path) || isdirectory(to_path)
-            echoerr 'File exists.'
-        elseif a:operation ==# 'copy' && item.is_dir
-            echoerr "Can\'t copy directory."
-        else
+        if CheckOperable(item.path, to_path, a:operation)
             call ExecOperation(item.path, to_path, a:operation)
             call RefreshVaffleWindows()
             call SearchPath(to_path)
