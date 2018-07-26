@@ -53,7 +53,21 @@ set ambiwidth=double
 
 set diffopt+=vertical
 
+set lazyredraw
+
 nnoremap Y y$
+nnoremap <silent> [q       :cprevious<CR>
+nnoremap <silent> [[q      :cpfile<CR>
+nnoremap <silent> ]q       :cnext<CR>
+nnoremap <silent> ]]q      :cnfile<CR>
+nnoremap <silent> []q      :copen<CR>
+nnoremap <silent> ][q      :cclose<CR>
+nnoremap <silent> ][h      :helpclose<CR>
+nnoremap <silent> <Space>r :call ExecuteThisFile()<CR>
+nnoremap <silent> <Space>s :call StartShell()<CR>
+nnoremap <silent> <Space>h :History<CR>
+nnoremap <silent> <Space>b :Buffers<CR>
+nnoremap <silent> <Space>: :History:<CR>
 
 let g:is_windows = has('win32') || has ('win64')
 
@@ -80,8 +94,6 @@ augroup vaffle_config
     autocmd FileType vaffle silent! call s:vaffle_init()
 augroup END
 
-let g:bookmark_file_path = $HOME . '/.vim/.bookmark'
-
 let g:vaffle_use_default_mappings = 1
 function! s:vaffle_init()
     unmap <buffer> <Space>
@@ -104,6 +116,8 @@ function! s:vaffle_init()
     nnoremap <silent><buffer><nowait> gy    :call EnterCopyMoveMode('copy')<CR>
     nnoremap <silent><buffer><nowait> gx    :call EnterCopyMoveMode('move')<CR>
     nnoremap <silent><buffer><nowait> p     :call PasteFile()<CR>
+    nnoremap <silent><buffer><nowait> <Space>f :call FindFile()<CR>
+    nnoremap <silent><buffer><nowait> <Space>g :call Rg()<CR>
 
     if !exists('b:vaffle_sorter_list')
         let b:vaffle_sorter_list = ['default', 'size', 'time']
@@ -317,6 +331,8 @@ function! FindOtherVaffle()
     return len(wins) == 1 ? wins : []
 endfunction
 
+let g:bookmark_file_path = $HOME . '/.vim/.bookmark'
+
 function! AddBookmark()
     let env = vaffle#buffer#get_env()
     execute 'redir >>' g:bookmark_file_path
@@ -384,16 +400,15 @@ try
         w
         if &filetype ==# 'vim'
             source %
-        else
-            execute '!' expand("%:p")
+        elseif expand('%:e') =~# '\v^(rb)$'
+            execute '!' expand('%:p')
         endif
     endfunction
 catch
 endtry
-nnoremap <Space>r :call ExecuteThisFile()<CR>
 
-function! s:find_file()
-    let dir = shellescape((&filetype ==# 'vaffle' ? expand('%') : getcwd()))
+function! FindFile()
+    let dir = shellescape(expand('%'))
     if g:is_windows
         let dir = iconv(dir, &encoding, "cp932")
         let source = printf("rg --files --hidden %s 2> nul", dir)
@@ -402,11 +417,6 @@ function! s:find_file()
     endif
     call fzf#run({"source": source , "sink": "OpenFile", "down": "40%"})
 endfunction
-nnoremap <Space>f :call <SID>find_file()<CR>
-
-nnoremap <Space>h :History<CR>
-nnoremap <Space>b :Buffers<CR>
-nnoremap <Space>: :History:<CR>
 
 let g:ack_mappings = {}
 if g:is_windows
@@ -414,35 +424,19 @@ if g:is_windows
 else
     let g:ackprg = 'rg -S --vimgrep'
 end
-nnoremap <Space>g :Rg<Space>
-command! -nargs=1 Rg call s:rg(<f-args>)
-function! s:rg(str)
-    if &filetype ==# 'vaffle'
-        execute "Ack" a:str fnameescape(expand('%'))
-        execute "normal \<CR>"
-    else
-        execute "Ack" a:str
-        execute "normal \<CR>"
+
+function! Rg()
+    let str = input('grep: ')
+    if empty(str)
+        return
     endif
+    execute "Ack" str fnameescape(expand('%'))
 endfunction
 
-nnoremap [q :cprevious<CR>
-nnoremap [[q :cpfile<CR>
-nnoremap ]q :cnext<CR>
-nnoremap ]]q :cnfile<CR>
-nnoremap []q :copen<CR>
-nnoremap ][q :cclose<CR>
-nnoremap ][h :helpclose<CR>
-
-function! s:start_shell()
-    if &filetype ==# 'vaffle'
-        call term_start(&shell, {'term_finish': 'close', 'cwd': expand('%')})
-    else
-        call term_start(&shell, {'term_finish': 'close', 'cwd': expand("%:p:h")})
-    endif
+function! StartShell()
+    let dir = (&filetype ==# 'vaffle' ? expand('%') : expand('%:p:h'))
+    call term_start(&shell, {'term_finish': 'close', 'cwd': dir})
 endfunction
-command! StartShell call s:start_shell()
-nnoremap <Space>s :StartShell<CR>
 
 if filereadable(expand("~/.vimrc.local"))
     source ~/.vimrc.local
