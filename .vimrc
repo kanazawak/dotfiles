@@ -65,6 +65,7 @@ nnoremap <silent> ][q      :cclose<CR>
 nnoremap <silent> ][h      :helpclose<CR>
 nnoremap <silent> <Space>r :call ExecuteThisFile()<CR>
 nnoremap <silent> <Space>s :call StartShell()<CR>
+nnoremap <silent> <Space>e :call StartExplorer()<CR>
 nnoremap <silent> <Space>h :History<CR>
 nnoremap <silent> <Space>b :Buffers<CR>
 nnoremap <silent> <Space>: :History:<CR>
@@ -87,7 +88,6 @@ function! StartExplorer()
         call SearchPath(path)
     endif
 endfunction
-noremap <silent> <Space>e :call StartExplorer()<CR>
 
 augroup vaffle_config
     autocmd!
@@ -128,12 +128,7 @@ endfunction
 
 function! RefreshVaffleWindows()
     let curr_winnr = winnr()
-    windo
-        \  if &filetype ==# 'vaffle'
-        \| let lnum = line('.')
-        \| call vaffle#refresh()
-        \| execute lnum
-        \| endif
+    windo if &filetype ==# 'vaffle' | call vaffle#refresh() | endif
     execute curr_winnr . 'wincmd w'
 endfunction
 
@@ -202,11 +197,13 @@ function! g:VaffleCreateLineFromItem(item) abort
             endif
         endfor
     endif
-    if !exists('b:names_width')
-        let b:names_width = CalcNamesWidth()
+    if a:item.index == 0
+        let names_width = CalcNamesWidth()
+    else
+        let names_width = strdisplaywidth(getline(1)) - 26
     endif
     let name = GetLabel(a:item)
-    let padding = repeat(' ', b:names_width - strdisplaywidth(name))
+    let padding = repeat(' ', names_width - strdisplaywidth(name))
     return printf("%s %s%s%s %s",
                 \ GetIcon(a:item),
                 \ name,
