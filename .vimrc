@@ -133,7 +133,7 @@ function! RefreshVaffleWindows()
 endfunction
 
 function! EnterCopyMoveMode(type)
-    for item in CursorItem()
+    for item in vaffle#get_cursor_items('n')
         if exists('t:copy_move') && t:copy_move.type ==# a:type && t:copy_move.path ==# item.path
             unlet t:copy_move
         else
@@ -257,11 +257,6 @@ function! ChangeSortOrder()
     call vaffle#refresh()
 endfunction
 
-function! CursorItem()
-    let items = vaffle#buffer#get_env().items
-    return empty(items) ? [] : [items[line(".")-1]]
-endfunction
-
 function! SearchPath(path)
     let env = vaffle#buffer#get_env()
     for i in range(1, len(env.items))
@@ -275,7 +270,7 @@ endfunction
 function! OperateFile(from_winnr, to_winnr, operation)
     let curr_winnr = winnr()
     execute a:from_winnr . 'wincmd w'
-    for item in CursorItem()
+    for item in vaffle#get_cursor_items('n')
         execute a:to_winnr . 'wincmd w'
         let to_path = expand('%:p') . item.basename
         if CheckOperable(item.path, to_path, a:operation)
@@ -349,7 +344,7 @@ function! ShowBookmark()
 endfunction
 
 function! GoForward()
-    for item in CursorItem()
+    for item in vaffle#get_cursor_items('n')
         if item.is_dir
             call vaffle#open_current('')
         endif
@@ -357,7 +352,7 @@ function! GoForward()
 endfunction
 
 function! Open()
-    for item in CursorItem()
+    for item in vaffle#get_cursor_items('n')
         if item.is_dir
             call vaffle#open_current('')
         else
