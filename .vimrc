@@ -2,7 +2,6 @@ call plug#begin('~/.vim/plugged')
     Plug 'tpope/vim-endwise'
     Plug 'tpope/vim-commentary'
     Plug 'godlygeek/tabular'
-    Plug 'vim-airline/vim-airline'
     Plug 'kanazawak/vaffle.vim'
     Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --all' }
     Plug 'junegunn/fzf.vim'
@@ -10,20 +9,14 @@ call plug#begin('~/.vim/plugged')
     Plug 'tpope/vim-repeat'
     Plug 'mileszs/ack.vim'
     Plug 'flazz/vim-colorschemes'
+    Plug 'vim-airline/vim-airline'
     Plug 'vim-airline/vim-airline-themes'
     Plug 'tpope/vim-fugitive'
-    Plug 'kana/vim-textobj-user'
-    Plug 'rhysd/vim-textobj-ruby'
 call plug#end()
 
 set backspace=indent,eol,start
 
 syntax enable
-" colorscheme spacegray
-" colorscheme landscape
-" colorscheme PaperColor
-colorscheme kalisi
-" colorscheme desert
 
 set number
 set cursorline
@@ -31,15 +24,11 @@ set smartindent
 set laststatus=2
 set showcmd
 
-set expandtab
-set tabstop=4
-set shiftwidth=4
-set softtabstop=0
+" tab options
+set expandtab tabstop=4 shiftwidth=4 softtabstop=0
 
-set ignorecase
-set smartcase
-set incsearch
-set hlsearch
+" search options
+set ignorecase smartcase incsearch hlsearch
 
 set visualbell t_vb=
 
