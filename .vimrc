@@ -138,7 +138,8 @@ function! PasteFile()
     endif
     let from_path = t:copy_move.path
     let to_path = expand('%:p') . fnamemodify(t:copy_move.path, ':t')
-    if CheckOperable(from_path, to_path, t:copy_move.type)
+    let to_path = CheckOperable(from_path, to_path, t:copy_move.type)
+    if !empty(to_path)
         call ExecOperation(from_path, to_path, t:copy_move.type)
         unlet t:copy_move
         call RefreshVaffleWindows()
@@ -148,13 +149,18 @@ endfunction
 
 function! CheckOperable(from_path, to_path, type)
     if filereadable(a:to_path) || isdirectory(a:to_path)
-        echoerr 'File exists.'
-        return v:false
+        let basename = fnamemodify(a:to_path, ':t')
+        let new_name = input('File exists. New name: ', basename)
+        if empty(new_name)
+            echo ' Cancelled.'
+            return ''
+        endif
+        return CheckOperable(a:from_path, fnamemodify(a:to_path, ':p:h') . '/' . new_name, a:type)
     elseif a:type ==# 'copy' && isdirectory(a:from_path)
         echoerr "Can\'t copy directory."
-        return v:false
+        return ''
     endif
-    return v:true
+    return a:to_path
 endfunction
 
 function! GetIcon(item)
@@ -262,7 +268,8 @@ function! OperateFile(from_winnr, to_winnr, operation)
     for item in vaffle#get_cursor_items('n')
         execute a:to_winnr . 'wincmd w'
         let to_path = expand('%:p') . item.basename
-        if CheckOperable(item.path, to_path, a:operation)
+        let to_path = CheckOperable(item.path, to_path, a:operation)
+        if !empty(to_path)
             call ExecOperation(item.path, to_path, a:operation)
             call RefreshVaffleWindows()
             call SearchPath(to_path)
