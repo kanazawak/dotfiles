@@ -55,6 +55,7 @@ nnoremap <silent> ][h      :helpclose<CR>
 nnoremap <silent> <Space>r :call ExecuteThisFile()<CR>
 nnoremap <silent> <Space>s :call StartShell()<CR>
 nnoremap <silent> <Space>e :call StartExplorer()<CR>
+nnoremap <silent> <Space>m :call ShowBookmark()<CR>
 nnoremap <silent> <Space>h :History<CR>
 nnoremap <silent> <Space>b :Buffers<CR>
 nnoremap <silent> <Space>: :History:<CR>
@@ -96,7 +97,6 @@ function! s:vaffle_init()
     nnoremap <silent><buffer><nowait> l     :call GoForward()<CR>
     nnoremap <silent><buffer><nowait> <CR>  :call Open()<CR>
     nnoremap <silent><buffer><nowait> a     :call AddBookmark()<CR>
-    nnoremap <silent><buffer><nowait> b     :call ShowBookmark()<CR>
     nnoremap <silent><buffer><nowait> mp    :call OperateFileBetweenWindow('move', 'put')<CR>
     nnoremap <silent><buffer><nowait> mo    :call OperateFileBetweenWindow('move', 'obtain')<CR>
     nnoremap <silent><buffer><nowait> cp    :call OperateFileBetweenWindow('copy', 'put')<CR>
@@ -322,21 +322,12 @@ function! AddBookmark()
     echo "added to bookmark list"
 endfunction
 
+function! Edit(path)
+    execute 'edit' fnameescape(a:path)
+endfunction
+
 function! ShowBookmark()
-    let temp_dir = tempname()
-    call mkdir(temp_dir, 'p')
-    let jumped_from = bufname('%')
-    execute 'Vaffle' temp_dir
-    let b:jumped_from = jumped_from
-    nnoremap <buffer> l :execute 'Vaffle' getline(".")<CR>
-    nnoremap <buffer> h :execute 'Vaffle' b:jumped_from<CR>
-    setlocal modifiable
-    execute 'read' g:bookmark_file_path
-    1d
-    silent v/\S/d
-    sort u
-    execute 'w!' g:bookmark_file_path
-    setlocal nomodifiable
+    call fzf#run({'source': readfile(g:bookmark_file_path), 'sink': funcref('Edit'), 'down': '40%'})
 endfunction
 
 function! GoForward()
