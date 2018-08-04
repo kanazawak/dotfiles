@@ -95,7 +95,7 @@ function! s:vaffle_init()
     nmap     <silent><buffer><nowait> o     <Plug>(vaffle-new-file)
     nmap     <silent><buffer><nowait> O     <Plug>(vaffle-mkdir)
     nnoremap <silent><buffer><nowait> l     :call GoForward()<CR>
-    nnoremap <silent><buffer><nowait> <CR>  :call Open()<CR>
+    nnoremap <silent><buffer><nowait> <CR>  :call OpenCursorItem()<CR>
     nnoremap <silent><buffer><nowait> a     :call AddBookmark()<CR>
     nnoremap <silent><buffer><nowait> mp    :call OperateFileBetweenWindow('move', 'put')<CR>
     nnoremap <silent><buffer><nowait> mo    :call OperateFileBetweenWindow('move', 'obtain')<CR>
@@ -322,12 +322,8 @@ function! AddBookmark()
     echo "added to bookmark list"
 endfunction
 
-function! Edit(path)
-    execute 'edit' fnameescape(a:path)
-endfunction
-
 function! ShowBookmark()
-    call fzf#run({'source': readfile(g:bookmark_file_path), 'sink': funcref('Edit'), 'down': '40%'})
+    call fzf#run({'source': readfile(g:bookmark_file_path), 'sink': funcref('Open'), 'down': '40%'})
 endfunction
 
 function! GoForward()
@@ -338,33 +334,28 @@ function! GoForward()
     endfor
 endfunction
 
-function! Open()
+function! OpenCursorItem()
     for item in vaffle#get_cursor_items('n')
-        if item.is_dir
-            call vaffle#open_current('')
-        else
-            execute 'OpenFile' item.path
-        endif
+        call Open(item.path)
     endfor
 endfunction
 
-command! -nargs=1 OpenFile :call s:open_file(<f-args>)
-function! s:open_file(path)
+if g:is_windows
+    let s:target_ext = '\v^(pdf|xls[xm]?)$'
+    let s:open_cmd = 'silent !start'
+elseif has('mac')
+    let s:target_ext = '\v^(pdf)$'
+    let s:open_cmd =  'silent !open'
+end
+
+function! Open(path)
     let ext = fnamemodify(a:path, ":e")
-    if g:is_windows
-        if ext =~# '\v^(pdf|xls[xm]?)$'
-            execute "silent !start" a:path
-            redraw!
-            return
-        endif
-    elseif has('mac')
-        if ext =~# '\v^(pdf)$'
-            execute "silent !open" a:path
-            redraw!
-            return
-        endif
-    end
-    execute 'edit' a:path
+    if !isdirectory(a:path) && ext =~# s:target_ext
+        execute s:open_cmd fnameescape(a:path)
+        redraw!
+        return
+    endif
+    execute 'edit' fnameescape(a:path)
 endfunction
 
 try
@@ -387,7 +378,7 @@ function! FindFile()
     else
         let source = printf("rg --files --hidden %s", dir)
     endif
-    call fzf#run({"source": source , "sink": "OpenFile", "down": "40%"})
+    call fzf#run({'source': source , 'sink': funcref('Open'), 'down': '40%'})
 endfunction
 
 let g:ack_mappings = {}
