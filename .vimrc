@@ -12,6 +12,7 @@ call plug#begin('~/.vim/plugged')
     Plug 'vim-airline/vim-airline'
     Plug 'vim-airline/vim-airline-themes'
     Plug 'tpope/vim-fugitive'
+    Plug 'kana/vim-submode'
 call plug#end()
 
 set backspace=indent,eol,start
@@ -400,6 +401,16 @@ function! StartShell()
     let dir = (&filetype ==# 'vaffle' ? expand('%') : expand('%:p:h'))
     call term_start(&shell, {'term_finish': 'close', 'cwd': dir})
 endfunction
+
+let g:submode_timeout = 0
+call submode#enter_with('resize_window', 'n', '', '<C-w>+', '<C-w>+')
+call submode#enter_with('resize_window', 'n', '', '<C-w>-', '<C-w>-')
+call submode#enter_with('resize_window', 'n', '', '<C-w>>', '<C-w>>')
+call submode#enter_with('resize_window', 'n', '', '<C-w><', '<C-w><')
+call submode#map('resize_window', 'n', '', '+', '<C-w>+')
+call submode#map('resize_window', 'n', '', '-', '<C-w>-')
+call submode#map('resize_window', 'n', '', '>', '<C-w>>')
+call submode#map('resize_window', 'n', '', '<', '<C-w><')
 
 if filereadable(expand("~/.vimrc.local"))
     source ~/.vimrc.local
