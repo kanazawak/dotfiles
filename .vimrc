@@ -12,7 +12,6 @@ call plug#begin('~/.vim/plugged')
     Plug 'vim-airline/vim-airline'
     Plug 'vim-airline/vim-airline-themes'
     Plug 'tpope/vim-fugitive'
-    Plug 'kana/vim-submode'
 call plug#end()
 
 set backspace=indent,eol,start
@@ -56,6 +55,7 @@ nnoremap <silent> ][h      :helpclose<CR>
 nnoremap <silent> <Space>r :call ExecuteThisFile()<CR>
 nnoremap <silent> <Space>s :call StartShell()<CR>
 nnoremap <silent> <Space>e :call StartExplorer()<CR>
+nnoremap <silent> <Space>l :call StartLauncher()<CR>
 nnoremap <silent> <Space>m :call ShowBookmark()<CR>
 nnoremap <silent> <Space>h :History<CR>
 nnoremap <silent> <Space>b :Buffers<CR>
@@ -324,7 +324,10 @@ function! AddBookmark()
 endfunction
 
 function! ShowBookmark()
-    call fzf#run({'source': readfile(g:bookmark_file_path), 'sink': funcref('Open'), 'down': '40%'})
+    call fzf#run({
+        \ 'source': readfile(g:bookmark_file_path),
+        \ 'sink': funcref('Open'),
+        \ 'down': '40%'})
 endfunction
 
 function! GoForward()
@@ -402,15 +405,20 @@ function! StartShell()
     call term_start(&shell, {'term_finish': 'close', 'cwd': dir})
 endfunction
 
-let g:submode_timeout = 0
-call submode#enter_with('resize_window', 'n', '', '<C-w>+', '<C-w>+')
-call submode#enter_with('resize_window', 'n', '', '<C-w>-', '<C-w>-')
-call submode#enter_with('resize_window', 'n', '', '<C-w>>', '<C-w>>')
-call submode#enter_with('resize_window', 'n', '', '<C-w><', '<C-w><')
-call submode#map('resize_window', 'n', '', '+', '<C-w>+')
-call submode#map('resize_window', 'n', '', '-', '<C-w>-')
-call submode#map('resize_window', 'n', '', '>', '<C-w>>')
-call submode#map('resize_window', 'n', '', '<', '<C-w><')
+let g:launcher_file_path = $HOME . '/.vim/.launcher'
+
+function! Launch(str)
+    silent execute substitute(a:str, '^.*\t', '', '')
+    redraw!
+endfunction
+
+function! StartLauncher()
+    call fzf#run({
+        \ 'source': readfile(g:launcher_file_path),
+        \ 'sink': funcref('Launch'),
+        \ 'options': '--no-multi --delimiter="\t" --nth=1',
+        \ 'down': '40%'})
+endfunction
 
 if filereadable(expand("~/.vimrc.local"))
     source ~/.vimrc.local
