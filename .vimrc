@@ -108,12 +108,23 @@ function! s:vaffle_init()
     nnoremap <silent><buffer><nowait> p     :call PasteFile()<CR>
     nnoremap <silent><buffer><nowait> <Space>f :call FindFile()<CR>
     nnoremap <silent><buffer><nowait> <Space>g :call Rg()<CR>
+    nnoremap <silent><buffer><nowait> yp    :call YankPath()<CR>
 
     let b:vaffle_sorter = 'default'
 
     highlight! link VaffleSorter Keyword
     syntax match VaffleCopyMove  "\v^[].*"
     highlight! link VaffleCopyMove Error
+endfunction
+
+function! YankPath()
+    for item in vaffle#get_cursor_items('n')
+        set modifiable
+        call setline('.', item.path)
+        normal! yy
+        call vaffle#buffer#redraw_item(item)
+        set nomodifiable nomodified
+    endfor
 endfunction
 
 function! RefreshVaffleWindows()
@@ -196,11 +207,11 @@ function! g:VaffleCreateLineFromItem(item) abort
     if a:item.index == 0
         let names_width = CalcNamesWidth()
     else
-        let names_width = strdisplaywidth(getline(1)) - 26
+        let names_width = strdisplaywidth(getline(1)) - 27
     endif
     let name = GetLabel(a:item)
     let padding = repeat(' ', names_width - strdisplaywidth(name))
-    return printf("%s %s%s%s %s",
+    return printf("%s %s%s%s  %s",
                 \ GetIcon(a:item),
                 \ name,
                 \ padding,
@@ -210,7 +221,7 @@ endfunction
 
 function! GetLabel(item) abort
     return printf("%s%s",
-        \ a:item.basename . (a:item.is_dir ? '/' : ''),
+        \ a:item.basename,
         \ a:item.is_link ? '  ' . a:item.path: '')
 endfunction
 
@@ -416,7 +427,7 @@ function! StartLauncher()
     call fzf#run({
         \ 'source': readfile(g:launcher_file_path),
         \ 'sink': funcref('Launch'),
-        \ 'options': '--no-multi --delimiter="\t" --nth=1',
+        \ 'options': '--no-multi --delimiter="\t" --tabstop=32 --nth=1',
         \ 'down': '40%'})
 endfunction
 
