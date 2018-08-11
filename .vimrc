@@ -98,10 +98,6 @@ function! s:vaffle_init()
     nnoremap <silent><buffer><nowait> l     :call GoForward()<CR>
     nnoremap <silent><buffer><nowait> <CR>  :call OpenCursorItem()<CR>
     nnoremap <silent><buffer><nowait> a     :call AddBookmark()<CR>
-    nnoremap <silent><buffer><nowait> mp    :call OperateFileBetweenWindow('move', 'put')<CR>
-    nnoremap <silent><buffer><nowait> mo    :call OperateFileBetweenWindow('move', 'obtain')<CR>
-    nnoremap <silent><buffer><nowait> cp    :call OperateFileBetweenWindow('copy', 'put')<CR>
-    nnoremap <silent><buffer><nowait> co    :call OperateFileBetweenWindow('copy', 'obtain')<CR>
     nnoremap <silent><buffer><nowait> s     :call ChangeSortOrder()<CR>
     nnoremap <silent><buffer><nowait> gy    :call EnterCopyMoveMode('copy')<CR>
     nnoremap <silent><buffer><nowait> gx    :call EnterCopyMoveMode('move')<CR>
@@ -119,11 +115,11 @@ endfunction
 
 function! YankPath()
     for item in vaffle#get_cursor_items('n')
-        set modifiable
+        setlocal modifiable
         call setline('.', item.path)
         normal! yy
         call vaffle#buffer#redraw_item(item)
-        set nomodifiable nomodified
+        setlocal nomodifiable nomodified
     endfor
 endfunction
 
@@ -274,22 +270,6 @@ function! SearchPath(path)
     endfor
 endfunction
 
-function! OperateFile(from_winnr, to_winnr, operation)
-    let curr_winnr = winnr()
-    execute a:from_winnr . 'wincmd w'
-    for item in vaffle#get_cursor_items('n')
-        execute a:to_winnr . 'wincmd w'
-        let to_path = expand('%:p') . item.basename
-        let to_path = CheckOperable(item.path, to_path, a:operation)
-        if !empty(to_path)
-            call ExecOperation(item.path, to_path, a:operation)
-            call RefreshVaffleWindows()
-            call SearchPath(to_path)
-        endif
-    endfor
-    execute curr_winnr . 'wincmd w'
-endfunction
-
 function! ExecOperation(from_path, to_path, operation)
     if a:operation ==# 'move'
         call rename(a:from_path, a:to_path)
@@ -298,30 +278,6 @@ function! ExecOperation(from_path, to_path, operation)
         silent execute command shellescape(a:from_path) shellescape(a:to_path)
         redraw!
     end
-endfunction
-
-function! OperateFileBetweenWindow(operation, direction)
-    let my_winnr = winnr()
-    for other_winnr in FindOtherVaffle()
-        if a:direction ==# 'put'
-            call OperateFile(my_winnr, other_winnr, a:operation)
-        else
-            call OperateFile(other_winnr, my_winnr, a:operation)
-        endif
-    endfor
-endfunction
-
-function! FindOtherVaffle()
-    let wins = []
-    let curr_winnr = winnr()
-    for winnr in range(1, winnr('$'))
-        execute winnr . 'wincmd w'
-        if winnr != curr_winnr && &filetype == 'vaffle'
-            call add(wins, winnr)
-        endif
-    endfor
-    execute curr_winnr . 'wincmd w'
-    return len(wins) == 1 ? wins : []
 endfunction
 
 let g:bookmark_file_path = $HOME . '/.vim/.bookmark'
