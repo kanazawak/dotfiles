@@ -73,7 +73,7 @@ function! StartExplorer()
         let path = expand('%:p')
         let basename = expand("%:t")
         execute 'edit' expand("%:p:h")
-        if basename =~# '\v^\.'
+        if !b:vaffle.shows_hidden_files && basename =~# '\v^\.'
             execute "normal \<Plug>(vaffle-toggle-hidden)"
         endif
         call SearchPath(path)
@@ -255,16 +255,15 @@ function! ChangeSortOrder()
     if b:vaffle_sorter == 'time'
         syntax match VaffleSorter "\v.{15}$"
     elseif b:vaffle_sorter == 'size'
-        syntax match VaffleSorter "\v\S+( .)?\ze.{16}$"
+        syntax match VaffleSorter "\v\S+( .)?\ze.{17}$"
     endif
     call vaffle#refresh()
 endfunction
 
 function! SearchPath(path)
-    let env = vaffle#buffer#get_env()
-    for i in range(1, len(env.items))
-        if env.items[i-1].path ==# a:path
-            execute i
+    for item in vaffle#buffer#get_env().items
+        if item.path ==# a:path
+            execute item.index + 1
             break
         endif
     endfor
@@ -361,10 +360,9 @@ end
 
 function! Rg()
     let str = input('grep: ')
-    if empty(str)
-        return
+    if !empty(str)
+        execute "Ack" str fnameescape(expand('%'))
     endif
-    execute "Ack" str fnameescape(expand('%'))
 endfunction
 
 function! StartShell()
