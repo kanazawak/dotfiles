@@ -93,13 +93,14 @@ function! s:vaffle_init()
     unmap <buffer> q
     nmap     <silent><buffer><nowait> Q     <Plug>(vaffle-quit)
     nmap     <silent><buffer><nowait> <Tab> <Plug>(vaffle-toggle-current)
+    vmap     <silent><buffer><nowait> <Tab> <Plug>(vaffle-toggle-current)
     nmap     <silent><buffer><nowait> o     <Plug>(vaffle-new-file)
     nmap     <silent><buffer><nowait> O     <Plug>(vaffle-mkdir)
     nnoremap <silent><buffer><nowait> l     :call GoForward()<CR>
     nnoremap <silent><buffer><nowait> <CR>  :call OpenCursorItem()<CR>
     nnoremap <silent><buffer><nowait> a     :call AddBookmark()<CR>
     nnoremap <silent><buffer><nowait> s     :call ChangeSortOrder()<CR>
-    nnoremap <silent><buffer><nowait> gy    :call EnterCopyMoveMode('copy')<CR>
+    nnoremap <silent><buffer><nowait> mv    :call MoveFile()<CR>
     nnoremap <silent><buffer><nowait> gx    :call EnterCopyMoveMode('move')<CR>
     nnoremap <silent><buffer><nowait> p     :call PasteFile()<CR>
     nnoremap <silent><buffer><nowait> <Space>f :call FindFile()<CR>
@@ -111,6 +112,21 @@ function! s:vaffle_init()
     highlight! link VaffleSorter Keyword
     syntax match VaffleCopyMove  "\v^[].*"
     highlight! link VaffleCopyMove Error
+endfunction
+
+function! MoveFile()
+    let env = vaffle#buffer#get_env()
+    let sel = vaffle#get_selection()
+    if sel.dir ==# env.dir || empty(sel.dir) || empty(sel.dict)
+        return
+    endif
+    for basename in keys(sel.dict)
+        let from_path = fnamemodify(sel.dir, ':p') . basename
+        let to_path = fnamemodify(env.dir, ':p') . basename
+        call rename(from_path, to_path)
+    endfor
+    call RefreshVaffleWindows()
+    call SearchPath(to_path)
 endfunction
 
 function! YankPath()
