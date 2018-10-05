@@ -100,8 +100,8 @@ function! s:vaffle_init()
     nnoremap <silent><buffer><nowait> <CR>  :call OpenCursorItem()<CR>
     nnoremap <silent><buffer><nowait> a     :call AddBookmark()<CR>
     nnoremap <silent><buffer><nowait> s     :call ChangeSortOrder()<CR>
-    nnoremap <silent><buffer><nowait> mv    :call MoveFile()<CR>
-    nnoremap <silent><buffer><nowait> gx    :call EnterCopyMoveMode('move')<CR>
+    nnoremap <silent><buffer><nowait> mv    :call OperateFile('move')<CR>
+    nnoremap <silent><buffer><nowait> cp    :call OperateFile('copy')<CR>
     nnoremap <silent><buffer><nowait> p     :call PasteFile()<CR>
     nnoremap <silent><buffer><nowait> <Space>f :call FindFile()<CR>
     nnoremap <silent><buffer><nowait> <Space>g :call Rg()<CR>
@@ -114,16 +114,22 @@ function! s:vaffle_init()
     highlight! link VaffleCopyMove Error
 endfunction
 
-function! MoveFile()
+function! OperateFile(type)
     let env = vaffle#buffer#get_env()
     let sel = vaffle#get_selection()
-    if sel.dir ==# env.dir || empty(sel.dir) || empty(sel.dict)
+    if empty(sel.dir) || empty(sel.dict)
         return
     endif
     for basename in keys(sel.dict)
         let from_path = fnamemodify(sel.dir, ':p') . basename
         let to_path = fnamemodify(env.dir, ':p') . basename
-        call rename(from_path, to_path)
+        if a:type ==# 'move'
+            call rename(from_path, to_path)
+        else
+            let command = (g:is_windows ? '!copy' : '!cp')
+            silent execute command shellescape(from_path) shellescape(to_path)
+            redraw!
+        endif
     endfor
     call RefreshVaffleWindows()
     call SearchPath(to_path)
@@ -143,48 +149,6 @@ function! RefreshVaffleWindows()
     let curr_winnr = winnr()
     windo if &filetype ==# 'vaffle' | call vaffle#refresh() | endif
     execute curr_winnr . 'wincmd w'
-endfunction
-
-function! EnterCopyMoveMode(type)
-    for item in vaffle#get_cursor_items('n')
-        if exists('t:copy_move') && t:copy_move.type ==# a:type && t:copy_move.path ==# item.path
-            unlet t:copy_move
-        else
-            let t:copy_move = { 'type': a:type, 'path': item.path }
-        endif
-        call RefreshVaffleWindows()
-    endfor
-endfunction
-
-function! PasteFile()
-    if !exists('t:copy_move')
-        return
-    endif
-    let from_path = t:copy_move.path
-    let to_path = expand('%:p') . fnamemodify(t:copy_move.path, ':t')
-    let to_path = CheckOperable(from_path, to_path, t:copy_move.type)
-    if !empty(to_path)
-        call ExecOperation(from_path, to_path, t:copy_move.type)
-        unlet t:copy_move
-        call RefreshVaffleWindows()
-        call SearchPath(to_path)
-    endif
-endfunction
-
-function! CheckOperable(from_path, to_path, type)
-    if filereadable(a:to_path) || isdirectory(a:to_path)
-        let basename = fnamemodify(a:to_path, ':t')
-        let new_name = input('File exists. New name: ', basename)
-        if empty(new_name)
-            echo ' Cancelled.'
-            return ''
-        endif
-        return CheckOperable(a:from_path, fnamemodify(a:to_path, ':p:h') . '/' . new_name, a:type)
-    elseif a:type ==# 'copy' && isdirectory(a:from_path)
-        echoerr "Can\'t copy directory."
-        return ''
-    endif
-    return a:to_path
 endfunction
 
 function! GetIcon(item)
