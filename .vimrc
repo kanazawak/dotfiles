@@ -102,7 +102,6 @@ function! s:vaffle_init()
     nnoremap <silent><buffer><nowait> s     :call ChangeSortOrder()<CR>
     nnoremap <silent><buffer><nowait> mv    :call OperateFile('move')<CR>
     nnoremap <silent><buffer><nowait> cp    :call OperateFile('copy')<CR>
-    nnoremap <silent><buffer><nowait> p     :call PasteFile()<CR>
     nnoremap <silent><buffer><nowait> <Space>f :call FindFile()<CR>
     nnoremap <silent><buffer><nowait> <Space>g :call Rg()<CR>
     nnoremap <silent><buffer><nowait> yp    :call YankPath()<CR>
@@ -126,8 +125,16 @@ function! OperateFile(type)
         if a:type ==# 'move'
             call rename(from_path, to_path)
         else
-            let command = (g:is_windows ? '!copy' : '!cp')
-            silent execute command shellescape(from_path) shellescape(to_path)
+            if g:is_windows
+                if isdirectory(from_path)
+                    let command = 'copy'
+                else
+                    let command = 'xcopy'
+                endif
+            else
+                let command = 'cp -r'
+            endif
+            silent execute '!' command shellescape(from_path) shellescape(to_path)
             redraw!
         endif
     endfor
@@ -170,15 +177,14 @@ function! g:VaffleCreateLineFromItem(item) abort
         let size = len(glob(a:item.path . '/*', 0, 1, 1))
     else
         let byte = getfsize(a:item.path)
-        let k = 1024
-        for unit in ['B', 'K', 'M', 'G', 'T']
-            if byte < k
-                let size = (byte * 1024 / k) . ' ' . unit
-                break
-            else
-                let k = k * 1024
-            endif
-        endfor
+        let k = float2nr(log(byte) / log(1024))
+        let unit = ['B', 'K', 'M', 'G', 'T'][k]
+        let x = byte / pow(1024, k)
+        if k == 0 || x >= 10
+            let size = float2nr(x) . ' ' . unit
+        else
+            let size = printf("%.1f %s", x, unit)
+        endif
     endif
     if a:item.index == 0
         let names_width = CalcNamesWidth()
