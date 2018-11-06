@@ -56,7 +56,6 @@ nnoremap <silent> <Space>r :call ExecuteThisFile()<CR>
 nnoremap <silent> <Space>s :call StartShell()<CR>
 nnoremap <silent> <Space>e :call StartExplorer()<CR>
 nnoremap <silent> <Space>l :call StartLauncher()<CR>
-nnoremap <silent> <Space>m :call ShowBookmark()<CR>
 nnoremap <silent> <Space>h :History<CR>
 nnoremap <silent> <Space>b :Buffers<CR>
 nnoremap <silent> <Space>: :History:<CR>
@@ -98,7 +97,6 @@ function! s:vaffle_init()
     nmap     <silent><buffer><nowait> O     <Plug>(vaffle-mkdir)
     nnoremap <silent><buffer><nowait> l     :call GoForward()<CR>
     nnoremap <silent><buffer><nowait> <CR>  :call OpenCursorItem()<CR>
-    nnoremap <silent><buffer><nowait> a     :call AddBookmark()<CR>
     nnoremap <silent><buffer><nowait> s     :call ChangeSortOrder()<CR>
     nnoremap <silent><buffer><nowait> mv    :call OperateFile('move')<CR>
     nnoremap <silent><buffer><nowait> cp    :call OperateFile('copy')<CR>
@@ -264,23 +262,6 @@ function! ExecOperation(from_path, to_path, operation)
     end
 endfunction
 
-let g:bookmark_file_path = $HOME . '/.vim/.bookmark'
-
-function! AddBookmark()
-    let env = vaffle#buffer#get_env()
-    execute 'redir >>' g:bookmark_file_path
-        echo env.dir
-    redir END
-    echo "added to bookmark list"
-endfunction
-
-function! ShowBookmark()
-    call fzf#run({
-        \ 'source': readfile(g:bookmark_file_path),
-        \ 'sink': funcref('Open'),
-        \ 'down': '40%'})
-endfunction
-
 function! GoForward()
     for item in vaffle#get_cursor_items('n')
         if item.is_dir
@@ -358,13 +339,24 @@ endfunction
 let g:launcher_file_path = $HOME . '/.vim/.launcher'
 
 function! Launch(str)
-    silent execute substitute(a:str, '^.*\t', '', '')
+    if a:str =~# '\v^[]'
+        execute s:open_cmd substitute(a:str, '^.*\t', '', '')
+    elseif a:str =~# '\v^[]'
+        execute 'silent !' substitute(a:str, '^.*\t', '', '')
+    elseif a:str =~# '\v^[]'
+        execute 'silent !' g:ie_exe_path substitute(a:str, '^.*\t', '', '')
+    elseif a:str =~# '\v^[]'
+        execute substitute(a:str, '^.*\t', '', '')
+    elseif a:str =~# '\v^[]'
+        call Open(expand(a:str[4:-1]))
+    endif
+    nohlsearch
     redraw!
 endfunction
 
 function! StartLauncher()
     call fzf#run({
-        \ 'source': readfile(g:launcher_file_path),
+        \ 'source': readfile(g:launcher_file_path)[1:-1],
         \ 'sink': funcref('Launch'),
         \ 'options': '--no-multi --delimiter="\t" --tabstop=32 --nth=1',
         \ 'down': '40%'})
