@@ -109,8 +109,6 @@ function! s:vaffle_init()
     let b:vaffle_sorter = 'default'
 
     highlight! link VaffleSorter Keyword
-    syntax match VaffleCopyMove  "\v^[].*"
-    highlight! link VaffleCopyMove Error
 endfunction
 
 function! OperateFile(type)
@@ -160,9 +158,7 @@ endfunction
 
 function! GetIcon(item)
     " require Nerd Fonts
-    if exists('t:copy_move') && t:copy_move.path == a:item.path
-        return t:copy_move.type ==# 'copy' ? '' : ''
-    elseif a:item.selected
+    if a:item.selected
         return ''
     elseif a:item.is_link
         return isdirectory(a:item.path) ? '' : ''
@@ -172,12 +168,11 @@ function! GetIcon(item)
 endfunction
 
 function! g:VaffleCreateLineFromItem(item) abort
-    let time = strftime("%y/%m/%d %H:%M ", getftime(a:item.path))
     if a:item.is_dir
         let size = len(glob(a:item.path . '/*', 0, 1, 1))
     else
         let byte = getfsize(a:item.path)
-        let k = float2nr(log(byte) / log(1024))
+        let k = (byte == 0 ? 0 : float2nr(log(byte) / log(1024)))
         let unit = ['B', 'K', 'M', 'G', 'T'][k]
         let x = byte / pow(1024, k)
         if k == 0 || x >= 10
@@ -186,30 +181,34 @@ function! g:VaffleCreateLineFromItem(item) abort
             let size = printf("%.1f %s", x, unit)
         endif
     endif
-    if a:item.index == 0
-        let names_width = CalcNamesWidth()
-    else
-        let names_width = strdisplaywidth(getline(1)) - 27
-    endif
-    let name = GetLabel(a:item)
-    let padding = repeat(' ', names_width - strdisplaywidth(name))
-    return printf("%s %s%s%s  %s",
+    let time = strftime("%y/%m/%d %H:%M ", getftime(a:item.path))
+    let label = GetLabel(a:item)
+    let padding = repeat(' ', LabelAreaWidth() - strdisplaywidth(label))
+    return printf("%s %s%s  %s  %s",
                 \ GetIcon(a:item),
-                \ name,
+                \ label,
                 \ padding,
-                \ printf("%7s", size),
+                \ printf("%6s", size),
                 \ time)
 endfunction
 
 function! GetLabel(item) abort
-    return printf("%s%s",
-        \ a:item.basename,
-        \ a:item.is_link ? '  ' . a:item.path: '')
+    let label = a:item.basename
+    if a:item.is_link
+        let lebel = label . '  ' . a:item.path
+    endif
+    let limit = LabelAreaWidth()
+    if strdisplaywidth(label) > limit
+        while strdisplaywidth(label) > limit - 2
+            let label = substitute(label, '.$', '', '')
+        endwhile
+        let label = label . '…'
+    endif
+    return label
 endfunction
 
-function! CalcNamesWidth() abort
-    let items = copy(vaffle#buffer#get_env().items)
-    return max(map(items, 'strdisplaywidth(GetLabel(v:val))'))
+function! LabelAreaWidth() abort
+    return 40
 endfunction
 
 let g:vaffle_comparator = {
