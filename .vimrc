@@ -308,12 +308,7 @@ endtry
 
 function! FindFile()
     let dir = shellescape(expand('%'))
-    if g:is_windows
-        let dir = iconv(dir, &encoding, "cp932")
-        let source = printf("rg --files --hidden %s 2> nul", dir)
-    else
-        let source = printf("rg --files --hidden %s", dir)
-    endif
+    let source = printf("fd --type file --hidden . %s", dir)
     call fzf#run({'source': source , 'sink': funcref('Open'), 'down': '40%'})
 endfunction
 
@@ -339,14 +334,19 @@ endfunction
 let g:launcher_file_path = $HOME . '/.vim/.launcher'
 
 function! Launch(str)
+    let body = substitute(a:str, '^.*\t', '', '')
     if a:str =~# '\v^[]'
-        execute s:open_cmd substitute(a:str, '^.*\t', '', '')
+        execute s:open_cmd body
     elseif a:str =~# '\v^[]'
-        execute 'silent !' substitute(a:str, '^.*\t', '', '')
+        if g:is_windows
+            execute s:open_cmd body
+        else
+            execute 'silent !' body
+        endif
     elseif a:str =~# '\v^[]'
-        execute 'silent !' g:ie_exe_path substitute(a:str, '^.*\t', '', '')
+        execute 'silent !' g:ie_exe_path body
     elseif a:str =~# '\v^[]'
-        execute substitute(a:str, '^.*\t', '', '')
+        execute body
     elseif a:str =~# '\v^[]'
         call Open(expand(a:str[4:-1]))
     endif
