@@ -123,9 +123,9 @@ function! OperateFile(type)
         else
             if g:is_windows
                 if isdirectory(from_path)
-                    let command = 'copy'
+                    let command = 'echo D | xcopy'
                 else
-                    let command = 'xcopy'
+                    let command = 'copy'
                 endif
             else
                 let command = 'cp -r'
@@ -193,7 +193,7 @@ endfunction
 function! GetLabel(item) abort
     let label = a:item.basename
     if a:item.is_link
-        let lebel = label . '  ' . a:item.path
+        let label = label . '  ' . a:item.path
     endif
     let limit = LabelAreaWidth()
     if strdisplaywidth(label) > limit
