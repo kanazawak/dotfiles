@@ -61,7 +61,6 @@ nnoremap <silent> <Space>: :History:<CR>
 
 let g:is_windows = has('win32') || has ('win64')
 
-" File Explorer
 function! StartExplorer()
     if &filetype ==# 'vaffle'
         if g:is_windows
@@ -88,22 +87,20 @@ function! s:vaffle_init()
     unmap <buffer> <Space>
     unmap <buffer> m
     unmap <buffer> i
-    unmap <buffer> q
-    nmap     <silent><buffer><nowait> Q     <Plug>(vaffle-quit)
-    nmap     <silent><buffer><nowait> <Tab> <Plug>(vaffle-toggle-current)
-    vmap     <silent><buffer><nowait> <Tab> <Plug>(vaffle-toggle-current)
-    nmap     <silent><buffer><nowait> o     <Plug>(vaffle-new-file)
-    nmap     <silent><buffer><nowait> O     <Plug>(vaffle-mkdir)
-    nnoremap <silent><buffer><nowait> l     :call GoForward()<CR>
-    nnoremap <silent><buffer><nowait> <CR>  :call OpenCursorItem()<CR>
-    nnoremap <silent><buffer><nowait> s     :call ChangeSortOrder()<CR>
-    nnoremap <silent><buffer><nowait> mv    :call OperateFile('move')<CR>
-    nnoremap <silent><buffer><nowait> cp    :call OperateFile('copy')<CR>
+    nmap     <silent><buffer><nowait> <Tab>    <Plug>(vaffle-toggle-current)
+    vmap     <silent><buffer><nowait> <Tab>    <Plug>(vaffle-toggle-current)
+    nmap     <silent><buffer><nowait> o        <Plug>(vaffle-new-file)
+    nmap     <silent><buffer><nowait> O        <Plug>(vaffle-mkdir)
+    nnoremap <silent><buffer><nowait> l        :call GoForward()<CR>
+    nnoremap <silent><buffer><nowait> <CR>     :call OpenCursorItem()<CR>
+    nnoremap <silent><buffer><nowait> s        :call ChangeSortOrder()<CR>
+    nnoremap <silent><buffer><nowait> mv       :call OperateFile('move')<CR>
+    nnoremap <silent><buffer><nowait> cp       :call OperateFile('copy')<CR>
     nnoremap <silent><buffer><nowait> <Space>f :call FindFile()<CR>
     nnoremap <silent><buffer><nowait> <Space>g :call Rg()<CR>
-    nnoremap <silent><buffer><nowait> yp    :call YankPath()<CR>
+    nnoremap <silent><buffer><nowait> yp       :call YankPath()<CR>
 
-    let b:vaffle_sorter = 'default'
+    let b:vaffle_sorter = ['default', 'size', 'time']
 
     highlight! link VaffleSorter Keyword
 endfunction
@@ -170,7 +167,7 @@ function! g:VaffleCreateLineFromItem(item) abort
     else
         let byte = getfsize(a:item.path)
         let k = (byte == 0 ? 0 : float2nr(log(byte) / log(1024)))
-        let unit = ['B', 'K', 'M', 'G', 'T'][k]
+        let unit = 'BKMGT'[k]
         let x = byte / pow(1024, k)
         if k == 0 || x >= 10
             let size = float2nr(x) . ' ' . unit
@@ -192,14 +189,14 @@ endfunction
 function! GetLabel(item) abort
     let label = a:item.basename
     if a:item.is_link
-        let label = label . '  ' . a:item.path
+        let label .= '  ' . a:item.path
     endif
     let limit = LabelAreaWidth()
     if strdisplaywidth(label) > limit
         while strdisplaywidth(label) > limit - 2
             let label = substitute(label, '.$', '', '')
         endwhile
-        let label = label . '…'
+        let label .= '…'
     endif
     return label
 endfunction
@@ -223,20 +220,16 @@ let g:vaffle_comparator = {
     \}
 
 function! g:VaffleGetComparator()
-    return g:vaffle_comparator[b:vaffle_sorter]
+    return g:vaffle_comparator[b:vaffle_sorter[0]]
 endfunction
 
 function! ChangeSortOrder()
-    let b:vaffle_sorter = {
-        \ 'default' : 'size',
-        \ 'size'    : 'time',
-        \ 'time'    : 'default'
-        \}[b:vaffle_sorter]
+    let b:vaffle_sorter = map([1, 2, 0], 'b:vaffle_sorter[v:val]')
 
     syntax clear VaffleSorter
-    if b:vaffle_sorter == 'time'
+    if b:vaffle_sorter[0] == 'time'
         syntax match VaffleSorter "\v.{15}$"
-    elseif b:vaffle_sorter == 'size'
+    elseif b:vaffle_sorter[0] == 'size'
         syntax match VaffleSorter "\v\S+( .)?\ze.{17}$"
     endif
     call vaffle#refresh()
