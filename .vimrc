@@ -7,7 +7,6 @@ call plug#begin('~/.vim/plugged')
     Plug 'junegunn/fzf.vim'
     Plug 'tpope/vim-surround'
     Plug 'tpope/vim-repeat'
-    Plug 'mileszs/ack.vim'
     Plug 'flazz/vim-colorschemes'
     Plug 'vim-airline/vim-airline'
     Plug 'vim-airline/vim-airline-themes'
@@ -312,17 +311,12 @@ function! FindFile()
     call fzf#run({'source': source , 'sink': funcref('Open'), 'down': '40%'})
 endfunction
 
-let g:ack_mappings = {}
-if g:is_windows
-    let g:ackprg = 'rg_wrapper.bat'
-else
-    let g:ackprg = 'rg -S --vimgrep'
-end
-
 function! Rg()
     let str = input('grep: ')
     if !empty(str)
-        execute "Ack" str fnameescape(expand('%'))
+        call fzf#vim#grep(
+            \ 'rg --vimgrep --color=always -S --no-messages ' . shellescape(str),
+            \ 1, {'dir': expand('%'), 'down': '40%'}, 0)
     endif
 endfunction
 
