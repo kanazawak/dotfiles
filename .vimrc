@@ -117,15 +117,9 @@ function! OperateFile(type)
         if a:type ==# 'move'
             call rename(from_path, to_path)
         else
-            if g:is_windows
-                if isdirectory(from_path)
-                    let command = 'echo D | xcopy'
-                else
-                    let command = 'copy'
-                endif
-            else
-                let command = 'cp -r'
-            endif
+            let command = isdirectory(from_path)
+                \ ? s:rec_copy_cmd
+                \ : s:copy_cmd
             silent execute '!' command shellescape(from_path) shellescape(to_path)
             redraw!
         endif
@@ -161,21 +155,20 @@ function! GetIcon(item)
     endif
 endfunction
 
+function! FileSizePretty(byte)
+    let k = (a:byte == 0 ? 0 : float2nr(log(a:byte) / log(1024)))
+    let unit = 'BKMGT'[k]
+    let x = a:byte / pow(1024, k)
+    return k == 0 || x >= 10
+        \ ? float2nr(x) . ' ' . unit
+        \ : printf("%.1f %s", x, unit)
+endfunction
+
 function! g:VaffleCreateLineFromItem(item) abort
-    if a:item.is_dir
-        let size = len(glob(a:item.path . '/*', 0, 1, 1))
-    else
-        let byte = getfsize(a:item.path)
-        let k = (byte == 0 ? 0 : float2nr(log(byte) / log(1024)))
-        let unit = 'BKMGT'[k]
-        let x = byte / pow(1024, k)
-        if k == 0 || x >= 10
-            let size = float2nr(x) . ' ' . unit
-        else
-            let size = printf("%.1f %s", x, unit)
-        endif
-    endif
-    let time = strftime("%y/%m/%d %H:%M ", getftime(a:item.path))
+    let size = a:item.is_dir
+        \ ? len(glob(a:item.path . '/*', 0, 1, 1))
+        \ : FileSizePretty(getfsize(a:item.path))
+    let time = strftime("%y/%m/%d %H:%M", getftime(a:item.path))
     let label = GetLabel(a:item)
     let padding = repeat(' ', LabelAreaWidth() - strdisplaywidth(label))
     return printf("%s %s%s  %s  %s",
@@ -224,13 +217,12 @@ function! g:VaffleGetComparator()
 endfunction
 
 function! ChangeSortOrder()
-    let b:vaffle_sorter = map([1, 2, 0], 'b:vaffle_sorter[v:val]')
-
     syntax clear VaffleSorter
+    let b:vaffle_sorter = map([1, 2, 0], 'b:vaffle_sorter[v:val]')
     if b:vaffle_sorter[0] == 'time'
-        syntax match VaffleSorter "\v.{15}$"
+        syntax match VaffleSorter "\v.{14}$"
     elseif b:vaffle_sorter[0] == 'size'
-        syntax match VaffleSorter "\v\S+( .)?\ze.{17}$"
+        syntax match VaffleSorter "\v\S+( .)?\ze.{16}$"
     endif
     call vaffle#refresh()
 endfunction
@@ -242,16 +234,6 @@ function! SearchPath(path)
             break
         endif
     endfor
-endfunction
-
-function! ExecOperation(from_path, to_path, operation)
-    if a:operation ==# 'move'
-        call rename(a:from_path, a:to_path)
-    elseif a:operation ==# 'copy'
-        let command = (g:is_windows ? '!copy' : '!cp')
-        silent execute command shellescape(a:from_path) shellescape(a:to_path)
-        redraw!
-    end
 endfunction
 
 function! GoForward()
@@ -271,9 +253,13 @@ endfunction
 if g:is_windows
     let s:target_ext = '\v^(pdf|xls[xm]?)$'
     let s:open_cmd = 'silent !start'
+    let s:copy_cmd = 'copy'
+    let s:rec_copy_cmd = 'echo D | xcopy'
 elseif has('mac')
     let s:target_ext = '\v^(pdf)$'
     let s:open_cmd =  'silent !open'
+    let s:copy_cmd = 'cp'
+    let s:rec_copy_cmd = 'cp -r'
 end
 
 function! Open(path)
@@ -309,7 +295,7 @@ function! Rg()
     if !empty(str)
         call fzf#vim#grep(
             \ 'rg --vimgrep --color=always -S --no-messages ' . shellescape(str),
-            \ 1, {'dir': expand('%'), 'down': '40%'}, 0)
+            \ 1, {'dir': expand('%'), 'down': '40%', 'options': '--reverse'}, 0)
     endif
 endfunction
 
