@@ -17,14 +17,11 @@ set backspace=indent,eol,start
 
 syntax enable
 
-set number
-set cursorline
-set smartindent
-set laststatus=2
-set showcmd
+" guiding item optinos
+set number cursorline laststatus=2 showcmd
 
-" tab options
-set expandtab tabstop=4 shiftwidth=4 softtabstop=0
+" indent & tab options
+set smartindent expandtab tabstop=4 shiftwidth=4 softtabstop=0
 
 " search options
 set ignorecase smartcase incsearch hlsearch
@@ -67,13 +64,7 @@ function! StartExplorer()
             execute "!start" shellescape(expand('%'))
         endif
     else
-        let path = expand('%:p')
-        let basename = expand("%:t")
-        execute 'edit' expand("%:p:h")
-        if !b:vaffle.shows_hidden_files && basename =~# '\v^\.'
-            execute "normal \<Plug>(vaffle-toggle-hidden)"
-        endif
-        call SearchPath(path)
+        Vaffle %
     endif
 endfunction
 
@@ -124,8 +115,13 @@ function! OperateFile(type)
             redraw!
         endif
     endfor
+    if fnamemodify(to_path, ':t') =~# '^\.'
+        let b:vaffle.shows_hidden_files = 1
+    endif
     call RefreshVaffleWindows()
-    call SearchPath(to_path)
+    let item = vaffle#item#create(to_path)
+    call vaffle#window#save_cursor(item)
+    call vaffle#window#restore_cursor()
 endfunction
 
 function! YankPath()
@@ -166,9 +162,9 @@ endfunction
 
 function! g:VaffleCreateLineFromItem(item) abort
     let size = a:item.is_dir
-        \ ? len(glob(a:item.path . '/*', 0, 1, 1))
-        \ : FileSizePretty(getfsize(a:item.path))
-    let time = strftime("%y/%m/%d %H:%M", getftime(a:item.path))
+        \ ? a:item.size
+        \ : FileSizePretty(a:item.size)
+    let time = strftime("%y/%m/%d %H:%M", a:item.ftime)
     let label = GetLabel(a:item)
     let padding = repeat(' ', LabelAreaWidth() - strdisplaywidth(label))
     return printf("%s %s%s  %s  %s",
@@ -200,16 +196,12 @@ endfunction
 
 let g:vaffle_comparator = {
     \'default': 'vaffle#sorter#default#compare',
-    \'size': { lhs, rhs ->
-        \ lhs.is_dir != rhs.is_dir
+    \'size': { lhs, rhs -> lhs.is_dir != rhs.is_dir
         \ ? rhs.is_dir - lhs.is_dir
-        \ : lhs.is_dir
-        \ ? len(glob(rhs.path . '/*', 0, 1, 1)) - len(glob(lhs.path . '/*', 0, 1, 1))
-        \ : getfsize(rhs.path) - getfsize(lhs.path) },
-    \'time': { lhs, rhs ->
-        \ lhs.is_dir != rhs.is_dir
+        \ : rhs.size - lhs.size },
+    \'time': { lhs, rhs -> lhs.is_dir != rhs.is_dir
         \ ? rhs.is_dir - lhs.is_dir
-        \ : getftime(rhs.path) - getftime(lhs.path) }
+        \ : rhs.ftime - lhs.ftime }
     \}
 
 function! g:VaffleGetComparator()
@@ -225,15 +217,6 @@ function! ChangeSortOrder()
         syntax match VaffleSorter "\v\S+( .)?\ze.{16}$"
     endif
     call vaffle#refresh()
-endfunction
-
-function! SearchPath(path)
-    for item in vaffle#buffer#get_env().items
-        if item.path ==# a:path
-            execute item.index + 1
-            break
-        endif
-    endfor
 endfunction
 
 function! GoForward()
