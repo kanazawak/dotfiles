@@ -64,35 +64,28 @@ function! StartExplorer()
             execute "!start" shellescape(expand('%'))
         endif
     else
-        Vaffle %
+        execute 'Vaffle' expand('%')
     endif
 endfunction
 
-augroup vaffle_config
-    autocmd!
-    autocmd FileType vaffle silent! call s:vaffle_init()
-augroup END
-
-let g:vaffle_use_default_mappings = 1
+autocmd FileType vaffle silent! call s:vaffle_init()
 function! s:vaffle_init()
     unmap <buffer> <Space>
     unmap <buffer> m
     unmap <buffer> i
-    nmap     <silent><buffer><nowait> <Tab>    <Plug>(vaffle-toggle-current)
-    vmap     <silent><buffer><nowait> <Tab>    <Plug>(vaffle-toggle-current)
-    nmap     <silent><buffer><nowait> o        <Plug>(vaffle-new-file)
-    nmap     <silent><buffer><nowait> O        <Plug>(vaffle-mkdir)
-    nnoremap <silent><buffer><nowait> l        :call GoForward()<CR>
-    nnoremap <silent><buffer><nowait> <CR>     :call OpenCursorItem()<CR>
-    nnoremap <silent><buffer><nowait> s        :call ChangeSortOrder()<CR>
-    nnoremap <silent><buffer><nowait> mv       :call OperateFile('move')<CR>
-    nnoremap <silent><buffer><nowait> cp       :call OperateFile('copy')<CR>
-    nnoremap <silent><buffer><nowait> <Space>f :call FindFile()<CR>
-    nnoremap <silent><buffer><nowait> <Space>g :call Rg()<CR>
-    nnoremap <silent><buffer><nowait> yp       :call YankPath()<CR>
+    nmap <buffer> <Tab> <Plug>(vaffle-toggle-current)
+    vmap <buffer> <Tab> <Plug>(vaffle-toggle-current)
+    nmap <buffer> o     <Plug>(vaffle-new-file)
+    nmap <buffer> O     <Plug>(vaffle-mkdir)
+    nnoremap <silent><buffer> l        :call GoForward()<CR>
+    nnoremap <silent><buffer> <CR>     :call OpenCursorItem()<CR>
+    nnoremap <silent><buffer> s        :call ChangeSortOrder()<CR>
+    nnoremap <silent><buffer> mv       :call OperateFile('move')<CR>
+    nnoremap <silent><buffer> cp       :call OperateFile('copy')<CR>
+    nnoremap <silent><buffer> <Space>f :call FindFile()<CR>
+    nnoremap <silent><buffer> <Space>g :call Rg()<CR>
 
     let b:vaffle_sorter = ['default', 'size', 'time']
-
     highlight! link VaffleSorter Keyword
 endfunction
 
@@ -124,16 +117,6 @@ function! OperateFile(type)
     call vaffle#window#restore_cursor()
 endfunction
 
-function! YankPath()
-    for item in vaffle#get_cursor_items('n')
-        setlocal modifiable
-        call setline('.', item.path)
-        normal! yy
-        call vaffle#buffer#redraw_item(item)
-        setlocal nomodifiable nomodified
-    endfor
-endfunction
-
 function! RefreshVaffleWindows()
     let curr_winnr = winnr()
     windo if &filetype ==# 'vaffle' | call vaffle#refresh() | endif
@@ -141,7 +124,6 @@ function! RefreshVaffleWindows()
 endfunction
 
 function! GetIcon(item)
-    " require Nerd Fonts
     if a:item.selected
         return ''
     elseif a:item.is_link
@@ -161,18 +143,13 @@ function! FileSizePretty(byte)
 endfunction
 
 function! g:VaffleCreateLineFromItem(item) abort
-    let size = a:item.is_dir
-        \ ? a:item.size
-        \ : FileSizePretty(a:item.size)
+    let icon = GetIcon(a:item)
+    let size = a:item.is_dir ? a:item.size : FileSizePretty(a:item.size)
+    let size = printf("%6s", size)
     let time = strftime("%y/%m/%d %H:%M", a:item.ftime)
     let label = GetLabel(a:item)
     let padding = repeat(' ', LabelAreaWidth() - strdisplaywidth(label))
-    return printf("%s %s%s  %s  %s",
-                \ GetIcon(a:item),
-                \ label,
-                \ padding,
-                \ printf("%6s", size),
-                \ time)
+    return printf("%s %s%s  %s  %s", icon, label, padding, size, time)
 endfunction
 
 function! GetLabel(item) abort
@@ -194,18 +171,15 @@ function! LabelAreaWidth() abort
     return 40
 endfunction
 
-let g:vaffle_comparator = {
+let s:M = float2nr(pow(10, 12))
+let s:vaffle_comparator = {
     \'default': 'vaffle#sorter#default#compare',
-    \'size': { lhs, rhs -> lhs.is_dir != rhs.is_dir
-        \ ? rhs.is_dir - lhs.is_dir
-        \ : rhs.size - lhs.size },
-    \'time': { lhs, rhs -> lhs.is_dir != rhs.is_dir
-        \ ? rhs.is_dir - lhs.is_dir
-        \ : rhs.ftime - lhs.ftime }
+    \'size': { l, r -> (l.is_dir - r.is_dir) * s:M + r.size  - l.size  },
+    \'time': { l, r -> (l.is_dir - r.is_dir) * s:M + r.ftime - l.ftime }
     \}
 
 function! g:VaffleGetComparator()
-    return g:vaffle_comparator[b:vaffle_sorter[0]]
+    return s:vaffle_comparator[b:vaffle_sorter[0]]
 endfunction
 
 function! ChangeSortOrder()
@@ -268,9 +242,8 @@ catch
 endtry
 
 function! FindFile()
-    let dir = shellescape(expand('%'))
-    let source = printf("fd --type file --hidden . %s", dir)
-    call fzf#run({'source': source , 'sink': funcref('Open'), 'down': '40%'})
+    let cmd = 'fd --type file --hidden ' . shellescape(expand('%'))
+    call fzf#run({'source': cmd , 'sink': funcref('Open'), 'down': '40%'})
 endfunction
 
 function! Rg()
@@ -301,8 +274,6 @@ function! Launch(str)
         endif
     elseif a:str =~# '\v^[]'
         execute 'silent !' g:ie_exe_path body
-    elseif a:str =~# '\v^[]'
-        execute body
     elseif a:str =~# '\v^[]'
         call Open(expand(a:str[4:-1]))
     endif
