@@ -1,5 +1,6 @@
 set -o vi
 alias vi='vim'
+PS1=\\w\\$\ 
 
 [ -f ~/.fzf.bash ] && source ~/.fzf.bash
 
