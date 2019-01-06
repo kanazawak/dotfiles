@@ -89,6 +89,12 @@ function! s:vaffle_init()
     highlight! link VaffleSorter Keyword
 endfunction
 
+function! s:copy(from_path, to_path)
+    let cmd = isdirectory(a:from_path) ? s:rec_copy_cmd : s:copy_cmd
+    silent execute '!' cmd shellescape(a:from_path) shellescape(a:to_path)
+    redraw!
+endfunction
+
 function! OperateFile(type)
     let env = vaffle#buffer#get_env()
     let sel = vaffle#get_selection()
@@ -98,15 +104,8 @@ function! OperateFile(type)
     for basename in keys(sel.dict)
         let from_path = fnamemodify(sel.dir, ':p') . basename
         let to_path = fnamemodify(env.dir, ':p') . basename
-        if a:type ==# 'move'
-            call rename(from_path, to_path)
-        else
-            let command = isdirectory(from_path)
-                \ ? s:rec_copy_cmd
-                \ : s:copy_cmd
-            silent execute '!' command shellescape(from_path) shellescape(to_path)
-            redraw!
-        endif
+        let Func = function(a:type ==# 'move' ? 'rename' : 's:copy')
+        call Func(from_path, to_path)
     endfor
     if fnamemodify(to_path, ':t') =~# '^\.'
         let b:vaffle.shows_hidden_files = 1
