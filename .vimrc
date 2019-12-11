@@ -56,6 +56,13 @@ nnoremap <silent> <Space>h :History<CR>
 nnoremap <silent> <Space>b :Buffers<CR>
 nnoremap <silent> <Space>: :History:<CR>
 
+" slightly Emacs-like in insert mode or cmdline
+noremap! <silent> <C-b> <Left>
+noremap! <silent> <C-f> <Right>
+noremap! <silent> <C-a> <Home>
+noremap! <silent> <C-e> <End>
+noremap! <silent> <C-d> <Delete>
+
 let g:is_windows = has('win32') || has ('win64')
 
 function! StartExplorer()
