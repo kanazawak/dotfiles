@@ -40,6 +40,8 @@ set diffopt+=vertical
 
 set lazyredraw
 
+set noshowmode
+
 nnoremap Y y$
 nnoremap <silent> [q       :cprevious<CR>
 nnoremap <silent> [[q      :cpfile<CR>
@@ -62,6 +64,19 @@ noremap! <silent> <C-f> <Right>
 noremap! <silent> <C-a> <Home>
 noremap! <silent> <C-e> <End>
 noremap! <silent> <C-d> <Delete>
+
+" cursor shape corresponding to modes
+if !has('gui_running')
+    set ttimeoutlen=1
+    let &t_SI = "\e[5 q"
+    let &t_EI = "\e[1 q"
+    let &t_SR = "\e[4 q"
+    augroup cmdline_cursor
+        autocmd!
+        autocmd CmdlineEnter             * execute "silent !echo -n " . &t_SI
+        autocmd CmdlineLeave,CmdwinEnter * execute "silent !echo -n " . &t_EI
+    augroup END
+endif
 
 let g:is_windows = has('win32') || has ('win64')
 
