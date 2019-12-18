@@ -11,10 +11,11 @@ call plug#begin('~/.vim/plugged')
     Plug 'vim-airline/vim-airline'
     Plug 'vim-airline/vim-airline-themes'
     Plug 'tpope/vim-fugitive'
+    " Plug 'kanazawak/vim-dirvish'
+    Plug 'kana/vim-submode'
 call plug#end()
 
 set backspace=indent,eol,start
-
 syntax enable
 
 " guiding item optinos
@@ -65,6 +66,17 @@ noremap! <silent> <C-a> <Home>
 noremap! <silent> <C-e> <End>
 noremap! <silent> <C-d> <Delete>
 
+call submode#enter_with('winsize', 'n', '', '<C-w>>', '<C-w>>')
+call submode#enter_with('winsize', 'n', '', '<C-w><', '<C-w><')
+call submode#enter_with('winsize', 'n', '', '<C-w>+', '<C-w>+')
+call submode#enter_with('winsize', 'n', '', '<C-w>-', '<C-w>-')
+call submode#map('winsize', 'n', '', '>', '<C-w>>')
+call submode#map('winsize', 'n', '', '<', '<C-w><')
+call submode#map('winsize', 'n', '', '+', '<C-w>+')
+call submode#map('winsize', 'n', '', '-', '<C-w>-')
+let g:submode_timeoutlen=2000
+let g:submode_always_show_submode=1
+
 " cursor shape corresponding to modes
 if !has('gui_running')
     set ttimeoutlen=1
@@ -86,24 +98,26 @@ function! StartExplorer()
             execute "!start" shellescape(expand('%'))
         endif
     else
-        execute 'Vaffle' expand('%')
+        execute 'Vaffle' expand('%:p:h')
+        " execute 'Dirvish' expand('%:p:h')
     endif
 endfunction
 
+let g:vaffle_use_default_mappings = 1
 autocmd FileType vaffle silent! call s:vaffle_init()
 function! s:vaffle_init()
-    unmap <buffer> <Space>
-    unmap <buffer> m
     unmap <buffer> i
-    nmap <buffer> <Tab> <Plug>(vaffle-toggle-current)
-    vmap <buffer> <Tab> <Plug>(vaffle-toggle-current)
     nmap <buffer> o     <Plug>(vaffle-new-file)
     nmap <buffer> O     <Plug>(vaffle-mkdir)
+    nmap <buffer> <ESC> <Plug>(vaffle-refresh)
+    nmap <silent><buffer><nowait> d    :call vaffle#cut('n')<CR>
+    vmap <silent><buffer><nowait> d    :call vaffle#cut('v')<CR>
+    nmap <silent><buffer><nowait> yy   :call vaffle#copy('n')<CR>
+    vmap <silent><buffer><nowait> y    :call vaffle#copy('v')<CR>
     nnoremap <silent><buffer> l        :call GoForward()<CR>
     nnoremap <silent><buffer> <CR>     :call OpenCursorItem()<CR>
     nnoremap <silent><buffer> s        :call ChangeSortOrder()<CR>
-    nnoremap <silent><buffer> mv       :call OperateFile('move')<CR>
-    nnoremap <silent><buffer> cp       :call OperateFile('copy')<CR>
+    nnoremap <silent><buffer> p        :call OperateFile()<CR>
     nnoremap <silent><buffer> <Space>f :call FindFile()<CR>
     nnoremap <silent><buffer> <Space>g :call Rg()<CR>
 
@@ -117,16 +131,21 @@ function! s:copy(from_path, to_path)
     redraw!
 endfunction
 
-function! OperateFile(type)
-    let env = vaffle#buffer#get_env()
-    let sel = vaffle#get_selection()
-    if empty(sel.dir) || empty(sel.dict)
+function! OperateFile()
+    let type = get(g:, 'vaffle_operation', '')
+    if type !=# 'cut' && type !=# 'copy'
         return
     endif
-    for basename in keys(sel.dict)
+
+    let env = vaffle#buffer#get_env()
+    let sel = vaffle#get_selection()
+    if empty(sel.dir) || empty(sel.basenames)
+        return
+    endif
+    for basename in sel.basenames
         let from_path = fnamemodify(sel.dir, ':p') . basename
         let to_path = fnamemodify(env.dir, ':p') . basename
-        let Func = function(a:type ==# 'move' ? 'rename' : 's:copy')
+        let Func = function(type ==# 'cut' ? 'rename' : 's:copy')
         call Func(from_path, to_path)
     endfor
     if fnamemodify(to_path, ':t') =~# '^\.'
@@ -146,7 +165,11 @@ endfunction
 
 function! GetIcon(item)
     if a:item.selected
-        return ''
+        if get(g:, 'vaffle_operation', 'cut') ==# 'cut'
+            return ''
+        else
+            return ''
+        endif
     elseif a:item.is_link
         return isdirectory(a:item.path) ? '' : ''
     else
@@ -161,6 +184,10 @@ function! FileSizePretty(byte)
     return k == 0 || x >= 10
         \ ? float2nr(x) . ' ' . unit
         \ : printf("%.1f %s", x, unit)
+endfunction
+
+function! g:DirvishIconFunc(path)
+    return isdirectory(a:path) ? '' : ''
 endfunction
 
 function! g:VaffleCreateLineFromItem(item) abort
@@ -217,7 +244,7 @@ endfunction
 function! GoForward()
     for item in vaffle#get_cursor_items('n')
         if item.is_dir
-            call vaffle#open_current('')
+            call vaffle#open_current()
         endif
     endfor
 endfunction
