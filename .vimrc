@@ -58,6 +58,7 @@ nnoremap <silent> <Space>l :call StartLauncher()<CR>
 nnoremap <silent> <Space>h :History<CR>
 nnoremap <silent> <Space>b :Buffers<CR>
 nnoremap <silent> <Space>: :History:<CR>
+nnoremap <silent> <ESC>    :nohl<CR>
 
 " slightly Emacs-like in insert mode or cmdline
 noremap! <silent> <C-b> <Left>
@@ -195,24 +196,48 @@ function! g:VaffleCreateLineFromItem(item) abort
     let size = a:item.is_dir ? a:item.size : FileSizePretty(a:item.size)
     let size = printf("%6s", size)
     let time = strftime("%y/%m/%d %H:%M", a:item.ftime)
-    let label = GetLabel(a:item)
-    let padding = repeat(' ', LabelAreaWidth() - strdisplaywidth(label))
+    let label = a:item.label
+    let padding = repeat(' ', b:vaffle.max_labeldispwidth - strdisplaywidth(label))
     return printf("%s %s%s  %s  %s", icon, label, padding, size, time)
 endfunction
 
-function! GetLabel(item) abort
-    let label = a:item.basename
-    if a:item.is_link
-        let label .= '  ' . a:item.path
+augroup vaffle_conceal
+    autocmd!
+    autocmd! BufEnter,WinEnter * 
+                \   if &filetype ==# 'vaffle'
+                \ | call <SID>vaffle_conceal()
+                \ | endif
+augroup END
+
+function! s:vaffle_conceal()
+    set conceallevel=2
+    set concealcursor=nvic
+    ownsyntax
+    let labeldispwidth_limit = winwidth(0) - 1 - 28 - 3
+    let overflow = b:vaffle.max_labeldispwidth - labeldispwidth_limit
+    if overflow <=0
+        return
     endif
-    let limit = LabelAreaWidth()
-    if strdisplaywidth(label) > limit
-        while strdisplaywidth(label) > limit - 2
-            let label = substitute(label, '.$', '', '')
-        endwhile
-        let label .= '…'
-    endif
-    return label
+    for item in b:vaffle.items
+        if strdisplaywidth(item.label) <= labeldispwidth_limit
+            continue
+        endif
+        let w = 0
+        let right = ""
+        for char in split(item.label, '\zs')
+            if w >= labeldispwidth_limit
+                let right = right . char
+            endif
+            let w = w + strdisplaywidth(char)
+        endfor
+        let right = substitute(right, '/', '\\/', 'g')
+        let space = b:vaffle.max_labeldispwidth - w
+        let pat = '/\V' . right . '\v {'. (space + 2) . '}\ze.{22}$/'
+        execute 'syntax match Hoge' pat 'conceal cchar=…'
+    endfor
+    let pat = '/\v {' . overflow . '}\ze.{24}$/'
+    execute 'syntax match Hoge' pat 'conceal'
+    highlight! def link Conceal Error
 endfunction
 
 function! LabelAreaWidth() abort
@@ -309,7 +334,6 @@ function! StartShell()
 endfunction
 
 let g:launcher_file_path = $HOME . '/.vim/.launcher'
-
 function! Launch(str)
     let body = substitute(a:str, '^.*\t', '', '')
     if a:str =~# '\v^[]'
