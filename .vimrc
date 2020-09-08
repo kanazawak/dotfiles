@@ -11,8 +11,8 @@ call plug#begin('~/.vim/plugged')
     Plug 'vim-airline/vim-airline'
     Plug 'vim-airline/vim-airline-themes'
     Plug 'tpope/vim-fugitive'
-    " Plug 'kanazawak/vim-dirvish'
     Plug 'kana/vim-submode'
+    Plug 'morhetz/gruvbox'
 call plug#end()
 
 set backspace=indent,eol,start
@@ -58,7 +58,7 @@ nnoremap <silent> <Space>l :call StartLauncher()<CR>
 nnoremap <silent> <Space>h :History<CR>
 nnoremap <silent> <Space>b :Buffers<CR>
 nnoremap <silent> <Space>: :History:<CR>
-nnoremap <silent> <ESC>    :nohl<CR>
+" nnoremap <silent> <ESC>    :nohl<CR>
 
 " slightly Emacs-like in insert mode or cmdline
 noremap! <silent> <C-b> <Left>
@@ -100,7 +100,6 @@ function! StartExplorer()
         endif
     else
         execute 'Vaffle' expand('%:p:h')
-        " execute 'Dirvish' expand('%:p:h')
     endif
 endfunction
 
@@ -187,10 +186,6 @@ function! FileSizePretty(byte)
         \ : printf("%.1f %s", x, unit)
 endfunction
 
-function! g:DirvishIconFunc(path)
-    return isdirectory(a:path) ? '' : ''
-endfunction
-
 function! g:VaffleCreateLineFromItem(item) abort
     let icon = GetIcon(a:item)
     let size = a:item.is_dir ? a:item.size : FileSizePretty(a:item.size)
@@ -203,7 +198,7 @@ endfunction
 
 augroup vaffle_conceal
     autocmd!
-    autocmd! BufEnter,WinEnter * 
+    autocmd! BufEnter,WinEnter *
                 \   if &filetype ==# 'vaffle'
                 \ | call <SID>vaffle_conceal()
                 \ | endif
@@ -331,34 +326,6 @@ endfunction
 function! StartShell()
     let dir = (&filetype ==# 'vaffle' ? expand('%') : expand('%:p:h'))
     call term_start(&shell, {'term_finish': 'close', 'cwd': dir})
-endfunction
-
-let g:launcher_file_path = $HOME . '/.vim/.launcher'
-function! Launch(str)
-    let body = substitute(a:str, '^.*\t', '', '')
-    if a:str =~# '\v^[]'
-        execute s:open_cmd body
-    elseif a:str =~# '\v^[]'
-        if g:is_windows
-            execute s:open_cmd body
-        else
-            execute 'silent !' body
-        endif
-    elseif a:str =~# '\v^[]'
-        execute 'silent !' g:ie_exe_path body
-    elseif a:str =~# '\v^[]'
-        call Open(expand(a:str[4:-1]))
-    endif
-    nohlsearch
-    redraw!
-endfunction
-
-function! StartLauncher()
-    call fzf#run({
-        \ 'source': readfile(g:launcher_file_path)[1:-1],
-        \ 'sink': funcref('Launch'),
-        \ 'options': '--no-multi --delimiter="\t" --tabstop=32 --nth=1',
-        \ 'down': '40%'})
 endfunction
 
 if filereadable(expand("~/.vimrc.local"))
