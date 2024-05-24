@@ -9,7 +9,7 @@ call plug#begin('~/.vim/plugged')
   Plug 'tpope/vim-commentary'
   Plug 'tpope/vim-repeat'
   Plug 'tpope/vim-surround'
-  Plug 'tpope/vim-unimpaired'
+  " Plug 'tpope/vim-unimpaired'
   " Plug 'vim-airline/vim-airline'
   " Plug 'vim-airline/vim-airline-themes'
   Plug '~/myfiler'
@@ -45,16 +45,21 @@ nnoremap Y y$
 " nnoremap <silent> ][h      :helpclose<CR>
 
 
-" cursor shapes corresponding to modes
 if !has('gui_running')
-    let &t_SI = "\e[5 q"
-    let &t_EI = "\e[1 q"
-    let &t_SR = "\e[4 q"
-    augroup cmdline_cursor
-        autocmd!
-        autocmd CmdlineEnter             * :call echoraw(&t_SI)
-        autocmd CmdlineLeave,CmdwinEnter * :call echoraw(&t_EI)
-    augroup END
+  " cursor shapes corresponding to modes
+  let &t_SI = "\e[5 q"
+  let &t_EI = "\e[1 q"
+  let &t_SR = "\e[4 q"
+  augroup cmdline_cursor
+    autocmd!
+    autocmd CmdlineEnter             * :call echoraw(&t_SI)
+    autocmd CmdlineLeave,CmdwinEnter * :call echoraw(&t_EI)
+  augroup END
+
+  augroup auto_ime_off
+    autocmd!
+    autocmd ModeChanged *:n :silent !im-select com.apple.keylayout.ABC
+  augroup END
 endif
 
 
@@ -96,7 +101,6 @@ function! RipGrep()
 endfunction
 
 
-command! -bar -nargs=? -complete=dir MyFiler call myfiler#open(fnamemodify(<f-args>, ':p'))
 function! LaunchExplorer()
   if &filetype ==# 'myfiler'
     " if g:is_windows
@@ -105,32 +109,42 @@ function! LaunchExplorer()
   else
     let basename = expand('%:t')
     let pattern = '^.\{22\}' . basename . '$'
-    execute 'MyFiler' expand('%:p:h')
+    call myfiler#open(expand('%:p:h'))
     call search(pattern)
   endif
 endfunction
 
 
-function! SaveThis()
+function! LaunchTerminal()
+    let dir = &filetype ==# 'myfiler' ? expand('%') : getcwd()
+    let bufnr = term_start(&shell, #{ term_finish: 'close', cwd: dir })
+    call setbufvar(bufnr, "&buflisted", 0)
+endfunction
+
+
+function! SaveAndDo()
   if &filetype ==# 'vim'
     try
       source %
     catch /^Vim\%((\a\+)\)\=:E127:/
     endtry
   endif
-  silent execute 'w'
+  write
 endfunction
 
 
 let mapleader = "\<Space>"
-nnoremap <silent> <Leader>w :call SaveThis()<CR>
-nnoremap <silent> <Leader>t :terminal<CR>
+
+nnoremap <silent> <Leader>w :call SaveAndDo()<CR>
+nnoremap <silent> <Leader>b :Buffers<CR>
 nnoremap <silent> <Leader>h :History<CR>
 nnoremap <silent> <Leader>: :History:<CR>
 nnoremap <silent> <Leader>/ :History/<CR>
+nnoremap <silent> <Leader>H :Helptag<CR>
 nnoremap <silent> <Leader>e :call LaunchExplorer()<CR>
 nnoremap <silent> <Leader>f :call FindFile()<CR>
 nnoremap <silent> <Leader>g :call RipGrep()<CR>
+nnoremap <silent> <Leader>t :call LaunchTerminal()<CR>
 
 
 call submode#enter_with('winsize', 'n', '', '<C-w>>', '<C-w>>')
