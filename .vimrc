@@ -5,7 +5,7 @@ call plug#begin('~/.vim/plugged')
   Plug 'kana/vim-submode'
   Plug 'morhetz/gruvbox'
   Plug 'sheerun/vim-polyglot'
-  " Plug 'tpope/vim-endwise'
+  Plug 'tpope/vim-endwise'
   Plug 'tpope/vim-commentary'
   Plug 'tpope/vim-repeat'
   Plug 'tpope/vim-surround'
@@ -27,6 +27,7 @@ set history=200
 set viminfo='1000,<0,h
 
 " set lazyredraw
+" set shellslash
 
 
 " indent & tab options
@@ -44,9 +45,12 @@ nnoremap Y y$
 " nnoremap <silent> ][q      :cclose<CR>
 " nnoremap <silent> ][h      :helpclose<CR>
 
+function! ImeOff()
+  silent !im-select com.apple.keylayout.ABC
+endfunction
 
 if !has('gui_running')
-  " cursor shapes corresponding to modes
+  " Change the cursor shape depending on modes
   let &t_SI = "\e[5 q"
   let &t_EI = "\e[1 q"
   let &t_SR = "\e[4 q"
@@ -58,7 +62,8 @@ if !has('gui_running')
 
   augroup auto_ime_off
     autocmd!
-    autocmd ModeChanged *:n :silent !im-select com.apple.keylayout.ABC
+    autocmd ModeChanged *:n :call ImeOff()
+    autocmd FocusGained * :if mode() ==# 'n' | call ImeOff() | endif
   augroup END
 endif
 
@@ -123,13 +128,13 @@ endfunction
 
 
 function! SaveAndDo()
+  write
   if &filetype ==# 'vim'
     try
       source %
     catch /^Vim\%((\a\+)\)\=:E127:/
     endtry
   endif
-  write
 endfunction
 
 
