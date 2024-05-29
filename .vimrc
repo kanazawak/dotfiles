@@ -1,5 +1,6 @@
 packadd! matchit
 call plug#begin('~/.vim/plugged')
+  Plug 'itchyny/lightline.vim'
   Plug 'junegunn/fzf'
   Plug 'junegunn/fzf.vim'
   Plug 'kana/vim-submode'
@@ -10,11 +11,12 @@ call plug#begin('~/.vim/plugged')
   Plug 'tpope/vim-repeat'
   Plug 'tpope/vim-surround'
   " Plug 'tpope/vim-unimpaired'
-  " Plug 'vim-airline/vim-airline'
-  " Plug 'vim-airline/vim-airline-themes'
+  " Plug 'neoclide/coc.nvim', {'branch': 'release'}
   Plug '~/myfiler'
 call plug#end()
 
+
+let g:lightline = { 'colorscheme': 'gruvbox' }
 
 set belloff=all
 set backspace=indent,eol,start
@@ -37,16 +39,19 @@ set smartindent expandtab tabstop=2 shiftwidth=2 softtabstop=0
 set number cursorline laststatus=2 showcmd
 
 nnoremap Y y$
-" nnoremap <silent> [q       :cprevious<CR>
+nnoremap <silent> [q       :cprevious<CR>zz
+nnoremap <silent> ]q       :cnext<CR>zz
 " nnoremap <silent> [[q      :cpfile<CR>
-" nnoremap <silent> ]q       :cnext<CR>
 " nnoremap <silent> ]]q      :cnfile<CR>
 " nnoremap <silent> []q      :copen<CR>
 " nnoremap <silent> ][q      :cclose<CR>
 " nnoremap <silent> ][h      :helpclose<CR>
 
+let g:normal_input_method = 'com.apple.keylayout.ABC'
 function! ImeOff()
-  silent !im-select com.apple.keylayout.ABC
+  if mode() ==# 'n'
+    call system('im-select ' . g:normal_input_method)
+  endif
 endfunction
 
 if !has('gui_running')
@@ -63,10 +68,14 @@ if !has('gui_running')
   augroup auto_ime_off
     autocmd!
     autocmd ModeChanged *:n :call ImeOff()
-    autocmd FocusGained * :if mode() ==# 'n' | call ImeOff() | endif
+    autocmd FocusGained *   :call ImeOff()
   augroup END
 endif
 
+augroup auto_source
+  autocmd!
+  autocmd BufWritePost * ++nested if &ft ==# 'vim' | source % | endif
+augroup END
 
 " search behavior
 set ignorecase smartcase incsearch hlsearch wrapscan
@@ -75,9 +84,10 @@ nnoremap N Nzz
 nnoremap * *zz
 nnoremap # #zz
 nnoremap <silent> <Esc> :nohlsearch<CR>
-" selected string search (using z register)
+" Search selected string (using z register)
 vnoremap <silent> * "zy:let @/ = @z<CR>nzz
 vnoremap <silent> # "zy:let @/ = @z<CR>Nzz
+nnoremap <C-]> <C-]>zz
 
 
 " Emacs-like key bindings in insert/cmdline mode
@@ -100,7 +110,7 @@ function! RipGrep()
   if !empty(str)
     let rg_cmd = 'rg --line-number --no-heading --color=always --smart-case -- ' . str
     let dir = &filetype == 'myfiler' ? expand('%') : getcwd()
-    let fzf_param = fzf#vim#with_preview({'dir': dir, 'options': '--reverse --nth 3..'})
+    let fzf_param = fzf#vim#with_preview({ 'dir': dir, 'options': '--reverse --nth 3..' })
     call fzf#vim#grep(rg_cmd, fzf_param)
   endif
 endfunction
@@ -113,9 +123,13 @@ function! LaunchExplorer()
     " endif
   else
     let basename = expand('%:t')
-    let pattern = '^.\{22\}' . basename . '$'
     call myfiler#open(expand('%:p:h'))
-    call search(pattern)
+    for lnum in range(1, line('$'))
+      if myfiler#get_basename(lnum) == basename
+        execute lnum
+        break
+      endif
+    endfor
   endif
 endfunction
 
@@ -127,21 +141,16 @@ function! LaunchTerminal()
 endfunction
 
 
-function! SaveAndDo()
-  write
-  if &filetype ==# 'vim'
-    try
-      source %
-    catch /^Vim\%((\a\+)\)\=:E127:/
-    endtry
-  endif
+function! BuffersReverse()
+  let fzf_param = fzf#vim#with_preview({ 'options': ['--reverse'] })
+  call fzf#vim#buffers(fzf_param, 0)
 endfunction
 
 
 let mapleader = "\<Space>"
-
-nnoremap <silent> <Leader>w :call SaveAndDo()<CR>
-nnoremap <silent> <Leader>b :Buffers<CR>
+nnoremap <silent> <Leader>w :write<CR>
+nnoremap <silent> <C-n>     :call BuffersReverse()<CR>
+nnoremap <silent> <C-p>     :Buffers<CR>
 nnoremap <silent> <Leader>h :History<CR>
 nnoremap <silent> <Leader>: :History:<CR>
 nnoremap <silent> <Leader>/ :History/<CR>
@@ -152,12 +161,12 @@ nnoremap <silent> <Leader>g :call RipGrep()<CR>
 nnoremap <silent> <Leader>t :call LaunchTerminal()<CR>
 
 
-call submode#enter_with('winsize', 'n', '', '<C-w>>', '<C-w>>')
-call submode#enter_with('winsize', 'n', '', '<C-w><', '<C-w><')
+call submode#enter_with('winsize', 'n', '', '<C-w>>', '2<C-w>>')
+call submode#enter_with('winsize', 'n', '', '<C-w><', '2<C-w><')
 call submode#enter_with('winsize', 'n', '', '<C-w>+', '<C-w>+')
 call submode#enter_with('winsize', 'n', '', '<C-w>-', '<C-w>-')
-call submode#map('winsize', 'n', '', '>', '<C-w>>')
-call submode#map('winsize', 'n', '', '<', '<C-w><')
+call submode#map('winsize', 'n', '', '>', '2<C-w>>')
+call submode#map('winsize', 'n', '', '<', '2<C-w><')
 call submode#map('winsize', 'n', '', '+', '<C-w>+')
 call submode#map('winsize', 'n', '', '-', '<C-w>-')
 let g:submode_timeoutlen=2000
@@ -167,6 +176,7 @@ let g:submode_always_show_submode=1
 syntax enable
 set background=dark
 colorscheme gruvbox
+
 
 if filereadable(expand("~/.vimrc.local"))
   source ~/.vimrc.local
