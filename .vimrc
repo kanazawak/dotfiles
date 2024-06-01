@@ -4,6 +4,7 @@ call plug#begin('~/.vim/plugged')
   Plug 'junegunn/fzf'
   Plug 'junegunn/fzf.vim'
   Plug 'kana/vim-submode'
+  Plug 'mhinz/vim-startify'
   Plug 'morhetz/gruvbox'
   Plug 'sheerun/vim-polyglot'
   Plug 'tpope/vim-endwise'
@@ -22,10 +23,11 @@ set belloff=all
 set backspace=indent,eol,start
 set ttimeoutlen=1
 set nowrap
+set scrolloff=2
 set encoding=utf8
 set ambiwidth=double
 
-set history=200
+set history=1000
 set viminfo='1000,<0,h
 
 " set lazyredraw
@@ -50,6 +52,7 @@ nnoremap <silent> ]q       :cnext<CR>zz
 let g:normal_input_method = 'com.apple.keylayout.ABC'
 function! ImeOff()
   if mode() ==# 'n'
+    \ && trim(system('im-select')) != g:normal_input_method
     call system('im-select ' . g:normal_input_method)
   endif
 endfunction
@@ -72,10 +75,20 @@ if !has('gui_running')
   augroup END
 endif
 
-augroup auto_source
+augroup my_autocmds
   autocmd!
+  " auto source
   autocmd BufWritePost * ++nested if &ft ==# 'vim' | source % | endif
+
+  autocmd TabNew * call TabNewStartify()
 augroup END
+
+function! TabNewStartify()
+  augroup _temp
+    autocmd BufEnter * if bufname() == '' | Startify | endif | autocmd! _temp
+  augroup END
+endfunction
+
 
 " search behavior
 set ignorecase smartcase incsearch hlsearch wrapscan
