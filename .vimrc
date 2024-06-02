@@ -6,7 +6,7 @@ call plug#begin('~/.vim/plugged')
   Plug 'kana/vim-submode'
   Plug 'mhinz/vim-startify'
   Plug 'morhetz/gruvbox'
-  Plug 'sheerun/vim-polyglot'
+  " Plug 'sheerun/vim-polyglot'
   Plug 'tpope/vim-endwise'
   Plug 'tpope/vim-commentary'
   Plug 'tpope/vim-repeat'
@@ -80,15 +80,18 @@ augroup my_autocmds
   " auto source
   autocmd BufWritePost * ++nested if &ft ==# 'vim' | source % | endif
 
-  autocmd TabNew * call TabNewStartify()
+  " startify-faq-05
+  autocmd User Startified setlocal buftype=nofile
+  " startify-faq-17
+  autocmd BufWinEnter *
+      \ if !exists('t:startify_new_tab')
+      \     && empty(expand('%'))
+      \     && empty(&l:buftype)
+      \     && &l:modifiable |
+      \   let t:startify_new_tab = 1 |
+      \   Startify |
+      \ endif
 augroup END
-
-function! TabNewStartify()
-  augroup _temp
-    autocmd BufEnter * if bufname() == '' | Startify | endif | autocmd! _temp
-  augroup END
-endfunction
-
 
 " search behavior
 set ignorecase smartcase incsearch hlsearch wrapscan
