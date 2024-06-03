@@ -16,11 +16,12 @@ call plug#begin('~/.vim/plugged')
   Plug '~/myfiler'
 call plug#end()
 
-if get(g:, 'loaded_startify')
+if exists('g:plugs["vim-startify"]')
   let g:startify_change_to_dir = 0
 
   augroup for_startify
     autocmd!
+
     " See doc: startify-faq-05
     autocmd User Startified setlocal buftype=nofile
 
@@ -38,7 +39,9 @@ if get(g:, 'loaded_startify')
   augroup END
 endif
 
-if get(g:, 'loaded_lightline')
+if exists('g:plugs["lightline.vim"]')
+  set noshowmode
+
   let g:lightline = #{ colorscheme: 'gruvbox' }
   let g:lightline.component = #{
       \ cursorinfo: 'L:%4l/%L  C:%2v' }
@@ -87,7 +90,7 @@ set viminfo='1000,<0,h
 set smartindent expandtab tabstop=2 shiftwidth=2 softtabstop=0
 
 " guiding item optinos
-set number cursorline laststatus=2 showcmd showtabline=2 noshowmode
+set number cursorline laststatus=2 showcmd showtabline=2
 
 nnoremap Y y$
 nnoremap <silent> [q       :cprevious<CR>zz
@@ -223,7 +226,6 @@ endfunction
 let mapleader = "\<Space>"
 nnoremap <silent> <Leader>w :write<CR>
 nnoremap <silent> <C-n>     :call BuffersReverse()<CR>
-nnoremap <silent> <C-p>     :Buffers<CR>
 nnoremap <silent> <Leader>h :History<CR>
 nnoremap <silent> <Leader>: :History:<CR>
 nnoremap <silent> <Leader>/ :History/<CR>
