@@ -16,8 +16,57 @@ call plug#begin('~/.vim/plugged')
   Plug '~/myfiler'
 call plug#end()
 
+if get(g:, 'loaded_startify')
+  let g:startify_change_to_dir = 0
 
-let g:lightline = { 'colorscheme': 'gruvbox' }
+  augroup for_startify
+    autocmd!
+    " See doc: startify-faq-05
+    autocmd User Startified setlocal buftype=nofile
+
+    " See doc: startify-faq-17
+    autocmd BufWinEnter *
+        \ if !exists('t:startify_new_tab')
+        \     && empty(expand('%'))
+        \     && empty(&l:buftype)
+        \     && &l:modifiable |
+        \   let t:startify_new_tab = 1 |
+        \   Startify |
+        \ endif
+    " Prevent opening cmdwin just after VimEnter from kicking Startify
+    autocmd VimEnter * let t:startify_new_tab = 1
+  augroup END
+endif
+
+if get(g:, 'loaded_lightline')
+  let g:lightline = #{ colorscheme: 'gruvbox' }
+  let g:lightline.component = #{
+      \ cursorinfo: 'L:%4l/%L  C:%2v' }
+  let g:lightline.component_function = #{
+      \ buffer: 'LightlineBuffer' }
+  let g:lightline.active = #{
+      \ left:  [['mode', 'paste'], ['readonly', 'buffer', 'modified']],
+      \ right: [['cursorinfo'], [ 'fileformat', 'fileencoding', 'filetype']] }
+  let g:lightline.inactive = #{
+      \ left:  [['buffer']],
+      \ right: [['cursorinfo']] }
+  let g:lightline.tab_component_function = #{
+      \ tcd: 'LightlineTabCurrentDirectory' }
+  let g:lightline.tabline = #{
+      \ left:  [['tabs']],
+      \ right: [] }
+  let g:lightline.tab = #{
+      \ active:   ['tabnum', 'tcd'],
+      \ inactive: ['tabnum', 'tcd'] }
+
+  function! LightlineTabCurrentDirectory(tabpagenr)
+    return gettabvar(a:tabpagenr, 'current_directory', getcwd())
+  endfunction
+
+  function! LightlineBuffer()
+    return '[' . bufnr() . '] ' . expand('%:.')
+  endfunction
+endif
 
 set belloff=all
 set backspace=indent,eol,start
@@ -38,7 +87,7 @@ set viminfo='1000,<0,h
 set smartindent expandtab tabstop=2 shiftwidth=2 softtabstop=0
 
 " guiding item optinos
-set number cursorline laststatus=2 showcmd
+set number cursorline laststatus=2 showcmd showtabline=2 noshowmode
 
 nnoremap Y y$
 nnoremap <silent> [q       :cprevious<CR>zz
@@ -64,34 +113,42 @@ if !has('gui_running')
   let &t_SR = "\e[4 q"
   augroup cmdline_cursor
     autocmd!
-    autocmd CmdlineEnter             * :call echoraw(&t_SI)
-    autocmd CmdlineLeave,CmdwinEnter * :call echoraw(&t_EI)
+    autocmd CmdlineEnter             * call echoraw(&t_SI)
+    autocmd CmdlineLeave,CmdwinEnter * call echoraw(&t_EI)
   augroup END
 
   augroup auto_ime_off
     autocmd!
-    autocmd ModeChanged *:n :call ImeOff()
-    autocmd FocusGained *   :call ImeOff()
+    autocmd ModeChanged *:n call ImeOff()
+    autocmd FocusGained *   call ImeOff()
   augroup END
 endif
 
 augroup my_autocmds
   autocmd!
+
   " auto source
   autocmd BufWritePost * ++nested if &ft ==# 'vim' | source % | endif
 
-  " startify-faq-05
-  autocmd User Startified setlocal buftype=nofile
-  " startify-faq-17
-  autocmd BufWinEnter *
-      \ if !exists('t:startify_new_tab')
-      \     && empty(expand('%'))
-      \     && empty(&l:buftype)
-      \     && &l:modifiable |
-      \   let t:startify_new_tab = 1 |
-      \   Startify |
-      \ endif
+  " Keep tab-local current directory
+  autocmd DirChangedPre * call SaveTcd()
+  autocmd DirChanged * call RestoreTcd()
 augroup END
+
+function! SaveTcd()
+  let tabpagenr = tabpagenr()
+  noautocmd tabdo let t:current_directory = getcwd()
+  noautocmd execute 'normal! ' . tabpagenr . 'gt'
+endfunction
+
+function! RestoreTcd()
+  let new_cwd = getcwd()
+  let tabpagenr = tabpagenr()
+  noautocmd tabdo execute 'tcd ' . t:current_directory
+  noautocmd execute 'normal! ' . tabpagenr . 'gt'
+  noautocmd execute 'tcd ' . new_cwd
+  let t:current_directory = new_cwd
+endfunction
 
 " search behavior
 set ignorecase smartcase incsearch hlsearch wrapscan
