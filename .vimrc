@@ -1,5 +1,6 @@
 packadd! matchit
 call plug#begin('~/.vim/plugged')
+  Plug 'godlygeek/tabular'
   Plug 'itchyny/lightline.vim'
   Plug 'junegunn/fzf'
   Plug 'junegunn/fzf.vim'
@@ -13,11 +14,14 @@ call plug#begin('~/.vim/plugged')
   Plug 'tpope/vim-surround'
   " Plug 'tpope/vim-unimpaired'
   " Plug 'neoclide/coc.nvim', {'branch': 'release'}
+  Plug 'vim-jp/vimdoc-ja'
   Plug '~/myfiler'
 call plug#end()
 
 if exists('g:plugs["vim-startify"]')
   let g:startify_change_to_dir = 0
+  let g:startify_enable_special = 0
+  let g:startify_session_autoload = 1
 
   augroup for_startify
     autocmd!
@@ -25,18 +29,58 @@ if exists('g:plugs["vim-startify"]')
     " See doc: startify-faq-05
     autocmd User Startified setlocal buftype=nofile
 
-    " See doc: startify-faq-17
-    autocmd BufWinEnter *
-        \ if !exists('t:startify_new_tab')
-        \     && empty(expand('%'))
-        \     && empty(&l:buftype)
-        \     && &l:modifiable |
-        \   let t:startify_new_tab = 1 |
-        \   Startify |
-        \ endif
-    " Prevent opening cmdwin just after VimEnter from kicking Startify
-    autocmd VimEnter * let t:startify_new_tab = 1
+    " See doc: startify-faq-16
+    autocmd User Startified for key in ['q', 'b', 's', 'v', 't'] |
+          \ execute 'nunmap <buffer>' key | endfor
   augroup END
+
+  let g:startify_custom_header = startify#fortune#boxed()
+
+  let g:startify_bookmarks = [
+      \ #{ r: '~/.vimrc' }
+      \ ]
+  let g:startify_commands = [
+      \ ':help reference',
+      \ ['Vim Reference', 'h ref'],
+      \ {'h': 'h ref'},
+      \ {'m': ['My magical function', 'call Magic()']},
+      \ ]
+  let g:startify_skiplist = [
+      \ $HOME . '/.vimrc'
+      \ ]
+
+  let g:startify_lists = [
+      \ #{ type: 'bookmarks', header: ['   Bookmarks']      },
+      \ #{ type: 'files',     header: ['   MRU']            },
+      \ #{ type: 'dir',       header: ['   MRU '. getcwd()] },
+      \ #{ type: 'sessions',  header: ['   Sessions']       },
+      \ #{ type: 'commands',  header: ['   Commands']       },
+      \ ]
+
+  function! CustomHeader()
+    let major_version = v:version / 100
+    let minor_version = v:version % 100
+    let ver = 'VIM - Vi IMproved ' . major_version . '.' . minor_version
+
+    let art = [
+      \ ' ___        ___                    ',
+      \ '  \ \      / / (*)  ._. _   _      ',
+      \ '   \ \    / /  ._.  | |/ \_/ \.    ',
+      \ '    \ \  / /   | |  | .^. .^. |    ',
+      \ '     \ \/ /    | |  | | | | | |    ',
+      \ '      \  /     |_|  |_| |_| |_|    ',
+      \ '       \/' . printf('%24s  ', ver)
+      \ ]
+    let quote = startify#fortune#boxed()
+    let diff = len(art) - len(quote)
+    if diff > 0
+      let quote = map(range(diff), '""') + quote
+    endif
+    let combined = map(range(max([len(art), len(quote)])), { i -> get(art, i, '') . get(quote, i, '') })
+    return combined
+  endfunction
+
+  let g:startify_custom_header = 'CustomHeader()'
 endif
 
 if exists('g:plugs["lightline.vim"]')
@@ -44,7 +88,7 @@ if exists('g:plugs["lightline.vim"]')
 
   let g:lightline = #{ colorscheme: 'gruvbox' }
   let g:lightline.component = #{
-      \ cursorinfo: 'L:%4l/%L  C:%2v' }
+      \ cursorinfo: '%3l/%L:%2v' }
   let g:lightline.component_function = #{
       \ buffer: 'LightlineBuffer' }
   let g:lightline.active = #{
@@ -136,6 +180,7 @@ augroup my_autocmds
   " Keep tab-local current directory
   autocmd DirChangedPre * call SaveTcd()
   autocmd DirChanged * call RestoreTcd()
+  autocmd TabEnter * tcd ~
 augroup END
 
 function! SaveTcd()
@@ -223,8 +268,15 @@ function! BuffersReverse()
 endfunction
 
 
+function! StartifyTab()
+  tabnew
+  Startify
+endfunction
+
+
 let mapleader = "\<Space>"
 nnoremap <silent> <Leader>w :write<CR>
+nnoremap <silent> <Leader>q :quit<CR>
 nnoremap <silent> <C-n>     :call BuffersReverse()<CR>
 nnoremap <silent> <Leader>h :History<CR>
 nnoremap <silent> <Leader>: :History:<CR>
@@ -234,6 +286,7 @@ nnoremap <silent> <Leader>e :call LaunchExplorer()<CR>
 nnoremap <silent> <Leader>f :call FindFile()<CR>
 nnoremap <silent> <Leader>g :call RipGrep()<CR>
 nnoremap <silent> <Leader>t :call LaunchTerminal()<CR>
+nnoremap <silent> <Leader>s :call StartifyTab()<CR>
 
 
 call submode#enter_with('winsize', 'n', '', '<C-w>>', '2<C-w>>')
