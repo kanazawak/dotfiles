@@ -23,6 +23,114 @@ if exists('g:plugs["vim-startify"]')
   let g:startify_enable_special = 0
   let g:startify_session_autoload = 1
 
+  let g:startify_custom_header = 'StartifyCustomHeader()'
+
+  " function! Foo(path)
+  "   echo a:path
+  " endfunction
+  " let g:startify_transformations = [[ '.', funcref('Foo')]]
+  let g:startify_transformations = []
+
+  function! s:is_in_skiplist(arg) abort
+    for regexp in g:startify_skiplist
+      if a:arg =~# regexp
+        return 1
+      endif
+    endfor
+  endfunction
+
+  function! StartifyMruOutsideCd()
+    " let path_prefix = '^\V'. escape(fnamemodify(getcwd(), ':p'), '\')
+    let cwd = fnamemodify(getcwd(), ':p')
+    let counter     = 10 "g:startify_files_number
+    let entries     = {}
+    let oldfiles    = []
+
+    for fname in v:oldfiles
+      if counter <= 0
+        break
+      endif
+
+      if s:is_in_skiplist(fname)
+        continue
+      endif
+
+      let absolute_path = fnamemodify(resolve(fname), ":p")
+      if has_key(entries, absolute_path)
+            \ || !filereadable(absolute_path)
+            \ || s:is_in_skiplist(absolute_path)
+            \ || strpart(absolute_path, 0, len(cwd)) ==# cwd
+        continue
+      endif
+
+      " let entry_path = ''
+      " if !empty(g:startify_transformations)
+      "   let entry_path = s:transform(absolute_path)
+      " endif
+      " if empty(entry_path)
+      "   let entry_path = fnamemodify(absolute_path, a:path_format)
+      " endif
+
+      let entries[absolute_path]  = 1
+      let counter                -= 1
+      let oldfiles += [ #{ line: absolute_path, path: absolute_path } ]
+    endfor
+
+    return oldfiles
+  endfunction
+
+  let MyMru = funcref('StartifyMruOutsideCd')
+
+  let g:startify_lists = [
+      \ #{ type: 'bookmarks', header: ['   Bookmarks'] },
+      \ #{ type: 'dir',       header: ['   MRU below '. getcwd()] },
+      \ #{ type: MyMru,       header: ['   MRU other'] },
+      \ #{ type: 'sessions',  header: ['   Sessions'] },
+      \ #{ type: 'commands',  header: ['   Commands'] },
+      \ ]
+
+  let g:startify_bookmarks = [
+      \ #{ r: $HOME . '/.vimrc' }
+      \ ]
+  let g:startify_commands = [
+      \ ':help reference',
+      \ ['Vim Reference', 'h ref'],
+      \ {'h': 'h ref'},
+      \ {'m': ['My magical function', 'call Magic()']},
+      \ ]
+  let g:startify_skiplist =
+      \ map(copy(g:startify_bookmarks), { _, b -> '^' . values(b)[0] . '$' })
+      \ + [
+      \ 'plugged/vimdoc-ja/doc/.*\.jax$',
+      \ '.vim/plugged/vimdoc-ja/doc/',
+      \ 'homebrew/.*/vim/.*/doc/.*\.txt'
+      \ ]
+
+  function! StartifyCustomHeader()
+    let major_version = v:version / 100
+    let minor_version = v:version % 100
+    let ver = 'VIM - Vi IMproved ' . major_version . '.' . minor_version
+
+    let art = [
+      \ ' ____       ____                    ',
+      \ '  \ \\     / // (*)  ._. _   _      ',
+      \ '   \ \\   / //  ._.  | |/ \_/ \     ',
+      \ '    \ \\ / //   | |  | .^. .^. |    ',
+      \ '     \ \/ //    | |  | | | | | |    ',
+      \ '      \  //     |_|  |_| |_| |_|    ',
+      \ '       \//' . printf('%24s  ', ver)
+      \ ]
+    let quote = startify#fortune#boxed()
+    let diff = len(art) - len(quote)
+    if diff > 0
+      let quote = map(range(diff), '""') + quote
+    elseif diff < 0
+      let art += map(range(-diff), '"                                    "')
+    endif
+    let joined = map(range(len(art)), { i -> get(art, i, '') . get(quote, i, '') })
+    return joined
+  endfunction
+
   augroup for_startify
     autocmd!
 
@@ -31,56 +139,14 @@ if exists('g:plugs["vim-startify"]')
 
     " See doc: startify-faq-16
     autocmd User Startified for key in ['q', 'b', 's', 'v', 't'] |
-          \ execute 'nunmap <buffer>' key | endfor
+        \ execute 'nunmap <buffer>' key | endfor
   augroup END
 
-  let g:startify_custom_header = startify#fortune#boxed()
-
-  let g:startify_bookmarks = [
-      \ #{ r: '~/.vimrc' }
-      \ ]
-  let g:startify_commands = [
-      \ ':help reference',
-      \ ['Vim Reference', 'h ref'],
-      \ {'h': 'h ref'},
-      \ {'m': ['My magical function', 'call Magic()']},
-      \ ]
-  let g:startify_skiplist = [
-      \ $HOME . '/.vimrc'
-      \ ]
-
-  let g:startify_lists = [
-      \ #{ type: 'bookmarks', header: ['   Bookmarks']      },
-      \ #{ type: 'files',     header: ['   MRU']            },
-      \ #{ type: 'dir',       header: ['   MRU '. getcwd()] },
-      \ #{ type: 'sessions',  header: ['   Sessions']       },
-      \ #{ type: 'commands',  header: ['   Commands']       },
-      \ ]
-
-  function! CustomHeader()
-    let major_version = v:version / 100
-    let minor_version = v:version % 100
-    let ver = 'VIM - Vi IMproved ' . major_version . '.' . minor_version
-
-    let art = [
-      \ ' ___        ___                    ',
-      \ '  \ \      / / (*)  ._. _   _      ',
-      \ '   \ \    / /  ._.  | |/ \_/ \.    ',
-      \ '    \ \  / /   | |  | .^. .^. |    ',
-      \ '     \ \/ /    | |  | | | | | |    ',
-      \ '      \  /     |_|  |_| |_| |_|    ',
-      \ '       \/' . printf('%24s  ', ver)
-      \ ]
-    let quote = startify#fortune#boxed()
-    let diff = len(art) - len(quote)
-    if diff > 0
-      let quote = map(range(diff), '""') + quote
-    endif
-    let combined = map(range(max([len(art), len(quote)])), { i -> get(art, i, '') . get(quote, i, '') })
-    return combined
+  function! StartifyTab()
+    tabnew
+    Startify
   endfunction
-
-  let g:startify_custom_header = 'CustomHeader()'
+  nnoremap <silent> <Leader>s :call StartifyTab()<CR>
 endif
 
 if exists('g:plugs["lightline.vim"]')
@@ -268,11 +334,6 @@ function! BuffersReverse()
 endfunction
 
 
-function! StartifyTab()
-  tabnew
-  Startify
-endfunction
-
 
 let mapleader = "\<Space>"
 nnoremap <silent> <Leader>w :write<CR>
@@ -286,19 +347,20 @@ nnoremap <silent> <Leader>e :call LaunchExplorer()<CR>
 nnoremap <silent> <Leader>f :call FindFile()<CR>
 nnoremap <silent> <Leader>g :call RipGrep()<CR>
 nnoremap <silent> <Leader>t :call LaunchTerminal()<CR>
-nnoremap <silent> <Leader>s :call StartifyTab()<CR>
 
 
-call submode#enter_with('winsize', 'n', '', '<C-w>>', '2<C-w>>')
-call submode#enter_with('winsize', 'n', '', '<C-w><', '2<C-w><')
-call submode#enter_with('winsize', 'n', '', '<C-w>+', '<C-w>+')
-call submode#enter_with('winsize', 'n', '', '<C-w>-', '<C-w>-')
-call submode#map('winsize', 'n', '', '>', '2<C-w>>')
-call submode#map('winsize', 'n', '', '<', '2<C-w><')
-call submode#map('winsize', 'n', '', '+', '<C-w>+')
-call submode#map('winsize', 'n', '', '-', '<C-w>-')
-let g:submode_timeoutlen=2000
-let g:submode_always_show_submode=1
+if exists('g:plugs["vim-submode"]')
+  call submode#enter_with('winsize', 'n', '', '<C-w>>', '2<C-w>>')
+  call submode#enter_with('winsize', 'n', '', '<C-w><', '2<C-w><')
+  call submode#enter_with('winsize', 'n', '', '<C-w>+', '<C-w>+')
+  call submode#enter_with('winsize', 'n', '', '<C-w>-', '<C-w>-')
+  call submode#map('winsize', 'n', '', '>', '2<C-w>>')
+  call submode#map('winsize', 'n', '', '<', '2<C-w><')
+  call submode#map('winsize', 'n', '', '+', '<C-w>+')
+  call submode#map('winsize', 'n', '', '-', '<C-w>-')
+  let g:submode_timeoutlen=2000
+  let g:submode_always_show_submode=1
+endif
 
 
 syntax enable
