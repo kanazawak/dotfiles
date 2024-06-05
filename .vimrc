@@ -70,16 +70,17 @@ if PluginInstalled("vim-startify")
       \ #{ type: 'bookmarks',    header: ['   Bookmarks'] },
       \ #{ type: 'dir',          header: ['   MRU below '. getcwd()] },
       \ #{ type: funcref('Mru'), header: ['   MRU'] },
-      \ #{ type: 'sessions',     header: ['   Sessions'] },
       \ #{ type: 'commands',     header: ['   Commands'] },
       \ ]
 
   let g:startify_bookmarks = [
-      \ { 'v': $MYVIMRC }
+      \ { 'r': $MYVIMRC },
+      \ { 'l': $HOME . '/.vimrc.local' },
+      \ { 'h': $HOME },
       \ ]
 
   let g:startify_commands = [
-      \ ':cd ' . $HOME
+      \ { 'H': ':cd ' . $HOME },
       \ ]
 
   " TODO: Define later for updateing bookmarks
@@ -87,7 +88,7 @@ if PluginInstalled("vim-startify")
       \ map(copy(g:startify_bookmarks), { _, b -> '^' . values(b)[0] . '$' })
       \ + [
       \ 'plugged/vimdoc-ja/doc/.*\.jax$',
-      \ 'Cellar/.*/vim/.*/doc/.*\.txt'
+      \ 'Cellar/.*/vim/.*/doc/.*\.txt',
       \ ]
 
   function! StartifyCustomHeader() abort
@@ -118,6 +119,9 @@ if PluginInstalled("vim-startify")
   augroup for_startify
     autocmd!
 
+    autocmd BufEnter * if &filetype ==# 'startify' | setlocal nobuflisted | endif
+    autocmd User Startified setlocal bufhidden=hide
+
     " See doc: startify-faq-01
     autocmd User Startified setlocal cursorline
 
@@ -128,7 +132,6 @@ if PluginInstalled("vim-startify")
     autocmd User Startified for key in ['q', 'b', 's', 'v', 't'] |
         \ execute 'nunmap <buffer>' key | endfor
   augroup END
-
   function! StartifyTab() abort
     tabnew
     Startify
@@ -316,7 +319,6 @@ function! BuffersReverse() abort
 endfunction
 
 
-
 nnoremap <silent> <Leader>w :write<CR>
 nnoremap <silent> <Leader>q :quit<CR>
 nnoremap <silent> <C-n>     :call BuffersReverse()<CR>
@@ -328,6 +330,8 @@ nnoremap <silent> <Leader>e :call LaunchExplorer()<CR>
 nnoremap <silent> <Leader>f :call FindFile()<CR>
 nnoremap <silent> <Leader>g :call RipGrep()<CR>
 nnoremap <silent> <Leader>t :call LaunchTerminal()<CR>
+
+" nnoremap <silent> <Leader>b :call SelectBookmarks<CR>
 
 
 if PluginInstalled("vim-submode")
@@ -343,7 +347,7 @@ if PluginInstalled("vim-submode")
   let g:submode_always_show_submode=1
 endif
 
-if filereadable(expand("~/.vimrc.local"))
+if filereadable(expand('~/.vimrc.local'))
   source ~/.vimrc.local
 endif
 
