@@ -4,17 +4,17 @@ call plug#begin('~/.vim/plugged')
   Plug 'itchyny/lightline.vim'
   Plug 'junegunn/fzf'
   Plug 'junegunn/fzf.vim'
+  Plug 'junegunn/vim-peekaboo'
   Plug 'kana/vim-submode'
   Plug 'mhinz/vim-startify'
   Plug 'morhetz/gruvbox'
   Plug 'NLKNguyen/papercolor-theme'
-  " Plug 'sheerun/vim-polyglot'
+  Plug 'prabirshrestha/vim-lsp'
   Plug 'tpope/vim-endwise'
   Plug 'tpope/vim-commentary'
   Plug 'tpope/vim-repeat'
   Plug 'tpope/vim-surround'
   " Plug 'tpope/vim-unimpaired'
-  " Plug 'neoclide/coc.nvim', {'branch': 'release'}
   Plug 'vim-jp/vimdoc-ja'
   Plug '~/myfiler'
 call plug#end()
@@ -25,6 +25,51 @@ endfunction
 
 let mapleader = "\<Space>"
 
+if PluginInstalled('vim-lsp')
+  augroup lsp_register_server
+    autocmd!
+    if executable('vim-language-server')
+      " https://github.com/iamcco/vim-language-server
+        autocmd User lsp_setup call lsp#register_server(#{
+            \ name: 'vim-ls',
+            \ cmd: { server_info -> ['vim-language-server', '--stdio'] },
+            \ allowlist: ['vim'],
+            \ initialization_options: #{
+            \   vimruntime: $VIMRUNTIME,
+            \   runtimepath: &runtimepath,
+            \ }})
+    endif
+  augroup END
+
+  function! LspBufferConfigCommon() abort
+    if exists('+tagfunc')
+      setlocal tagfunc=lsp#tagfunc
+    endif
+    nmap <buffer> gd         <Plug>(lsp-definition)
+    nmap <buffer> gr         <Plug>(lsp-references)
+    nmap <buffer> gi         <Plug>(lsp-implementation)
+    nmap <buffer> gt         <Plug>(lsp-type-definition)
+    nmap <buffer> <Leader>rn <Plug>(lsp-rename)
+    nmap <buffer> [g         <Plug>(lsp-previous-diagnostic)
+    nmap <buffer> ]g         <Plug>(lsp-next-diagnostic)
+    nmap <buffer> K          <Plug>(lsp-hover)
+    nnoremap <buffer> <expr><c-f> lsp#scroll(+4)
+    nnoremap <buffer> <expr><c-d> lsp#scroll(-4)
+  endfunction
+
+  function! LspBufferConfigVim() abort
+    unmap <buffer> K
+  endfunction
+
+  augroup lsp_buffer_config
+    autocmd!
+    autocmd User lsp_buffer_enabled call LspBufferConfigCommon()
+        \ | if &filetype ==# 'vim' | call LspBufferConfigVim() | endif
+    autocmd CmdwinEnter * call lsp#disable_diagnostics_for_buffer()
+  augroup END
+endif
+
+
 if PluginInstalled("vim-startify")
   let g:startify_change_to_dir = 0
   let g:startify_enable_special = 0
@@ -34,7 +79,7 @@ if PluginInstalled("vim-startify")
   function! s:is_in_skiplist(path) abort
     for regexp in g:startify_skiplist
       if a:path =~# regexp
-        return 1
+        return v:true
       endif
     endfor
   endfunction
@@ -42,8 +87,8 @@ if PluginInstalled("vim-startify")
   function! Mru() abort
     let cwd = fnamemodify(getcwd(), ':p')
     let counter = g:startify_files_number
-    let added = {}
     let oldfiles = []
+    let added = {}
 
     for fname in v:oldfiles
       if counter <= 0
@@ -58,9 +103,9 @@ if PluginInstalled("vim-startify")
         continue
       endif
 
-      let added[path] = 1
       let counter -= 1
       call add(oldfiles, #{ line: path, path: path })
+      let added[path] = 1
     endfor
 
     return oldfiles
@@ -119,6 +164,7 @@ if PluginInstalled("vim-startify")
   augroup for_startify
     autocmd!
 
+    " Make Startify buffers reusable
     autocmd BufEnter * if &filetype ==# 'startify' | setlocal nobuflisted | endif
     autocmd User Startified setlocal bufhidden=hide
 
@@ -132,12 +178,16 @@ if PluginInstalled("vim-startify")
     autocmd User Startified for key in ['q', 'b', 's', 'v', 't'] |
         \ execute 'nunmap <buffer>' key | endfor
   augroup END
+
   function! StartifyTab() abort
     tabnew
     Startify
   endfunction
+
   nnoremap <silent> <Leader>s :call StartifyTab()<CR>
+  nnoremap <silent> <Leader>S :Startify<CR>
 endif
+
 
 if PluginInstalled("lightline.vim")
   set noshowmode
@@ -166,6 +216,7 @@ if PluginInstalled("lightline.vim")
   endfunction
 endif
 
+
 set belloff=all
 set backspace=indent,eol,start
 set ttimeoutlen=1
@@ -173,10 +224,8 @@ set nowrap
 set scrolloff=2
 set encoding=utf8
 set ambiwidth=double
-
 set history=1000
 set viminfo='1000,<0,h
-
 " set lazyredraw
 
 
@@ -185,15 +234,6 @@ set smartindent expandtab tabstop=2 shiftwidth=2 softtabstop=0
 
 " guiding item optinos
 set number cursorline laststatus=2 showcmd showtabline=2
-
-nnoremap Y y$
-nnoremap <silent> [q       :cprevious<CR>zz
-nnoremap <silent> ]q       :cnext<CR>zz
-" nnoremap <silent> [[q      :cpfile<CR>
-" nnoremap <silent> ]]q      :cnfile<CR>
-" nnoremap <silent> []q      :copen<CR>
-" nnoremap <silent> ][q      :cclose<CR>
-" nnoremap <silent> ][h      :helpclose<CR>
 
 let g:normal_input_method = 'com.apple.keylayout.ABC'
 function! ImeOff() abort
@@ -257,6 +297,7 @@ nnoremap * *zz
 nnoremap # #zz
 nnoremap <silent> <Esc> :nohlsearch<CR>
 " Search selected string (using z register)
+" TODO: save/restore z register
 vnoremap <silent> * "zy:let @/ = @z<CR>nzz
 vnoremap <silent> # "zy:let @/ = @z<CR>Nzz
 nnoremap <C-]> <C-]>zz
@@ -319,6 +360,16 @@ function! BuffersReverse() abort
 endfunction
 
 
+nnoremap Y y$
+nnoremap <silent> [q        :cprevious<CR>zz
+nnoremap <silent> ]q        :cnext<CR>zz
+nnoremap <silent> [t        gT
+nnoremap <silent> ]t        gt
+" nnoremap <silent> [[q       :cpfile<CR>
+" nnoremap <silent> ]]q       :cnfile<CR>
+" nnoremap <silent> []q       :copen<CR>
+" nnoremap <silent> ][q       :cclose<CR>
+" nnoremap <silent> ][h       :helpclose<CR>
 nnoremap <silent> <Leader>w :write<CR>
 nnoremap <silent> <Leader>q :quit<CR>
 nnoremap <silent> <C-n>     :call BuffersReverse()<CR>
@@ -331,8 +382,16 @@ nnoremap <silent> <Leader>f :call FindFile()<CR>
 nnoremap <silent> <Leader>g :call RipGrep()<CR>
 nnoremap <silent> <Leader>t :call LaunchTerminal()<CR>
 
-" nnoremap <silent> <Leader>b :call SelectBookmarks<CR>
-
+nnoremap <silent> <C-w>o :call SafeWinOnly()<CR>
+function SafeWinOnly()
+  if len(tabpagebuflist()) <= 1
+    return 
+  endif
+  let confirm = input('Really want close other windows? (y/N): ')
+  if confirm ==# 'y'
+    only
+  endif
+endfunction
 
 if PluginInstalled("vim-submode")
   call submode#enter_with('winsize', 'n', '', '<C-w>>', '2<C-w>>')
