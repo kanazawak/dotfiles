@@ -30,14 +30,14 @@ if PluginInstalled('vim-lsp')
     autocmd!
     if executable('vim-language-server')
       " https://github.com/iamcco/vim-language-server
-        autocmd User lsp_setup call lsp#register_server(#{
-            \ name: 'vim-ls',
-            \ cmd: { server_info -> ['vim-language-server', '--stdio'] },
-            \ allowlist: ['vim'],
-            \ initialization_options: #{
-            \   vimruntime: $VIMRUNTIME,
-            \   runtimepath: &runtimepath,
-            \ }})
+      autocmd User lsp_setup call lsp#register_server(#{
+          \ name: 'vim-ls',
+          \ cmd: { server_info -> ['vim-language-server', '--stdio'] },
+          \ allowlist: ['vim'],
+          \ initialization_options: #{
+          \   vimruntime: $VIMRUNTIME,
+          \   runtimepath: &runtimepath,
+          \ }})
     endif
   augroup END
 
@@ -45,6 +45,11 @@ if PluginInstalled('vim-lsp')
     if exists('+tagfunc')
       setlocal tagfunc=lsp#tagfunc
     endif
+    setlocal omnifunc=lsp#complete
+
+    let g:lsp_diagnostics_float_delay = 1000
+    let g:lsp_diagnostics_echo_delay = 1000
+
     nmap <buffer> gd         <Plug>(lsp-definition)
     nmap <buffer> gr         <Plug>(lsp-references)
     nmap <buffer> gi         <Plug>(lsp-implementation)
@@ -53,8 +58,8 @@ if PluginInstalled('vim-lsp')
     nmap <buffer> [g         <Plug>(lsp-previous-diagnostic)
     nmap <buffer> ]g         <Plug>(lsp-next-diagnostic)
     nmap <buffer> K          <Plug>(lsp-hover)
-    nnoremap <buffer> <expr><c-f> lsp#scroll(+4)
-    nnoremap <buffer> <expr><c-d> lsp#scroll(-4)
+    " nnoremap <buffer> <expr><c-f> lsp#scroll(+4)
+    " nnoremap <buffer> <expr><c-d> lsp#scroll(-4)
   endfunction
 
   function! LspBufferConfigVim() abort
@@ -71,50 +76,13 @@ endif
 
 
 if PluginInstalled("vim-startify")
-  let g:startify_change_to_dir = 0
+  let g:startify_change_to_dir = 1
   let g:startify_enable_special = 0
   let g:startify_session_autoload = 0
   let g:startify_custom_header = 'StartifyCustomHeader()'
 
-  function! s:is_in_skiplist(path) abort
-    for regexp in g:startify_skiplist
-      if a:path =~# regexp
-        return v:true
-      endif
-    endfor
-  endfunction
-
-  function! Mru() abort
-    let cwd = fnamemodify(getcwd(), ':p')
-    let counter = g:startify_files_number
-    let oldfiles = []
-    let added = {}
-
-    for fname in v:oldfiles
-      if counter <= 0
-        break
-      endif
-
-      let path = fnamemodify(resolve(fname), ":p")
-      if has_key(added, path)
-            \ || !filereadable(path)
-            \ || s:is_in_skiplist(path)
-            \ || strpart(path, 0, len(cwd)) ==# cwd
-        continue
-      endif
-
-      let counter -= 1
-      call add(oldfiles, #{ line: path, path: path })
-      let added[path] = 1
-    endfor
-
-    return oldfiles
-  endfunction
-
   let g:startify_lists = [
       \ #{ type: 'bookmarks',    header: ['   Bookmarks'] },
-      \ #{ type: 'dir',          header: ['   MRU below '. getcwd()] },
-      \ #{ type: funcref('Mru'), header: ['   MRU'] },
       \ #{ type: 'commands',     header: ['   Commands'] },
       \ ]
 
@@ -128,14 +96,6 @@ if PluginInstalled("vim-startify")
       \ { 'H': ':cd ' . $HOME },
       \ ]
 
-  " TODO: Define later for updateing bookmarks
-  let g:startify_skiplist =
-      \ map(copy(g:startify_bookmarks), { _, b -> '^' . values(b)[0] . '$' })
-      \ + [
-      \ 'plugged/vimdoc-ja/doc/.*\.jax$',
-      \ 'Cellar/.*/vim/.*/doc/.*\.txt',
-      \ ]
-
   function! StartifyCustomHeader() abort
     let major_version = v:version / 100
     let minor_version = v:version % 100
@@ -146,19 +106,14 @@ if PluginInstalled("vim-startify")
       \ '  \ \\     / // (*)  ._. _   _      ',
       \ '   \ \\   / //  ._.  | |/ \_/ \     ',
       \ '    \ \\ / //   | |  | .^. .^. |    ',
-      \ '     \ \/ //    | |  | | | | | |    ',
+      \ '     \ V/ //    | |  | | | | | |    ',
       \ '      \  //     |_|  |_| |_| |_|    ',
-      \ '       \//' . printf('%24s  ', ver)
+      \ '       \//' . printf('%24s  ', ver),
+      \ '                                    '
       \ ]
     let quote = startify#fortune#boxed()
-    let diff = len(art) - len(quote)
-    if diff > 0
-      let quote = map(range(diff), '""') + quote
-    elseif diff < 0
-      let art += map(range(-diff), '"                                    "')
-    endif
-    let joined = map(range(len(art)), { i -> get(art, i, '') . get(quote, i, '') })
-    return joined
+    let joined = map(art, { i, str -> str . get(quote, i, '') })
+    return filter(joined, { _, str -> str =~ '\S' })
   endfunction
 
   augroup for_startify
@@ -192,7 +147,7 @@ endif
 if PluginInstalled("lightline.vim")
   set noshowmode
 
-  let g:lightline = #{ colorscheme: 'gruvbox' }
+  let g:lightline = #{}
   let g:lightline.component = #{
       \ buffer: '[%n] %f',
       \ cursorinfo: '%3l/%L:%2v' }
@@ -221,7 +176,7 @@ set belloff=all
 set backspace=indent,eol,start
 set ttimeoutlen=1
 set nowrap
-set scrolloff=2
+set scrolloff=5
 set encoding=utf8
 set ambiwidth=double
 set history=1000
@@ -235,15 +190,24 @@ set smartindent expandtab tabstop=2 shiftwidth=2 softtabstop=0
 " guiding item optinos
 set number cursorline laststatus=2 showcmd showtabline=2
 
-let g:normal_input_method = 'com.apple.keylayout.ABC'
-function! ImeOff() abort
-  if mode() ==# 'n'
-    \ && trim(system('im-select')) != g:normal_input_method
-    call system('im-select ' . g:normal_input_method)
-  endif
-endfunction
+if has('mac') && executable('im-select')
+  let g:normal_input_method = 'com.apple.keylayout.ABC'
 
-if !has('gui_running')
+  function! ImeOff() abort
+    if mode() ==# 'n'
+      \ && trim(system('im-select')) != g:normal_input_method
+      call system('im-select ' . g:normal_input_method)
+    endif
+  endfunction
+
+  augroup auto_ime_off
+    autocmd!
+    autocmd ModeChanged *:n call ImeOff()
+    autocmd FocusGained *   call ImeOff()
+  augroup END
+endif
+
+if &term =~ '^xterm'
   " Change the cursor shape depending on modes
   let &t_SI = "\e[5 q"
   let &t_EI = "\e[1 q"
@@ -252,12 +216,6 @@ if !has('gui_running')
     autocmd!
     autocmd CmdlineEnter             * call echoraw(&t_SI)
     autocmd CmdlineLeave,CmdwinEnter * call echoraw(&t_EI)
-  augroup END
-
-  augroup auto_ime_off
-    autocmd!
-    autocmd ModeChanged *:n call ImeOff()
-    autocmd FocusGained *   call ImeOff()
   augroup END
 endif
 
@@ -291,16 +249,11 @@ endfunction
 
 " search behavior
 set ignorecase smartcase incsearch hlsearch wrapscan
-nnoremap n nzz
-nnoremap N Nzz
-nnoremap * *zz
-nnoremap # #zz
 nnoremap <silent> <Esc> :nohlsearch<CR>
 " Search selected string (using z register)
 " TODO: save/restore z register
-vnoremap <silent> * "zy:let @/ = @z<CR>nzz
-vnoremap <silent> # "zy:let @/ = @z<CR>Nzz
-nnoremap <C-]> <C-]>zz
+vnoremap <silent> * "zy:let @/ = @z<CR>n
+vnoremap <silent> # "zy:let @/ = @z<CR>N
 
 
 " Emacs-like key bindings in insert/cmdline mode
@@ -311,6 +264,18 @@ noremap! <C-e> <End>
 noremap! <C-h> <BS>
 noremap! <C-d> <Delete>
 
+function! s:os_open(path) abort
+  if has('win32')
+    silent execute '!start' a:path
+  else
+    silent execute '!open' a:path
+  endif
+  redraw!
+endfunction
+command! -nargs=1 OsOpen call s:os_open(<q-args>)
+let g:myfiler_open_command = #{
+    \ pdf:'OsOpen'
+    \ }
 
 function! FindFile() abort
   let dir = &filetype == 'myfiler' ? expand('%') : getcwd()
@@ -331,18 +296,13 @@ endfunction
 
 function! LaunchExplorer() abort
   if &filetype ==# 'myfiler'
-    " if g:is_windows
-    "   execute "!start" shellescape(expand('%'))
-    " endif
+    if has('win32')
+      execute "!start" shellescape(expand('%'))
+    endif
   else
-    let basename = expand('%:t')
+    let name = expand('%:t')
     call myfiler#open(expand('%:p:h'))
-    for lnum in range(1, line('$'))
-      if myfiler#get_basename(lnum) == basename
-        execute lnum
-        break
-      endif
-    endfor
+    call myfiler#search_name(name)
   endif
 endfunction
 
@@ -361,8 +321,8 @@ endfunction
 
 
 nnoremap Y y$
-nnoremap <silent> [q        :cprevious<CR>zz
-nnoremap <silent> ]q        :cnext<CR>zz
+nnoremap <silent> [q        :cprevious<CR>
+nnoremap <silent> ]q        :cnext<CR>
 nnoremap <silent> [t        gT
 nnoremap <silent> ]t        gt
 " nnoremap <silent> [[q       :cpfile<CR>
@@ -373,7 +333,7 @@ nnoremap <silent> ]t        gt
 nnoremap <silent> <Leader>w :write<CR>
 nnoremap <silent> <Leader>q :quit<CR>
 nnoremap <silent> <C-n>     :call BuffersReverse()<CR>
-nnoremap <silent> <Leader>h :History<CR>
+nnoremap <silent> <C-p>     :call History()<CR>
 nnoremap <silent> <Leader>: :History:<CR>
 nnoremap <silent> <Leader>/ :History/<CR>
 nnoremap <silent> <Leader>H :Helptag<CR>
@@ -381,9 +341,21 @@ nnoremap <silent> <Leader>e :call LaunchExplorer()<CR>
 nnoremap <silent> <Leader>f :call FindFile()<CR>
 nnoremap <silent> <Leader>g :call RipGrep()<CR>
 nnoremap <silent> <Leader>t :call LaunchTerminal()<CR>
+nnoremap <silent> <C-w>o    :call SafeWinOnly()<CR>
+" TODO
+" tnoremap <silent> <C-w>o    <Nop>
 
-nnoremap <silent> <C-w>o :call SafeWinOnly()<CR>
-function SafeWinOnly()
+function! History() abort
+  let files = fzf#vim#_recent_files()
+  call filter(files, { _, file ->
+      \    file !~ '\.jax$'
+      \ && file !~ 'Cellar/.*/vim/.*/doc/.*\.txt$'
+      \ && file !~ 'plugged/.*/doc/.*\.txt$' })
+  let param = fzf#vim#with_preview(#{ source: files })
+  call fzf#vim#history(param)
+endfunction
+
+function! SafeWinOnly() abort
   if len(tabpagebuflist()) <= 1
     return 
   endif
@@ -391,6 +363,7 @@ function SafeWinOnly()
   if confirm ==# 'y'
     only
   endif
+  redraw
 endfunction
 
 if PluginInstalled("vim-submode")
