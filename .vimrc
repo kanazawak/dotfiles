@@ -6,7 +6,7 @@ call plug#begin('~/.vim/plugged')
   Plug 'junegunn/fzf.vim'
   Plug 'junegunn/vim-peekaboo'
   Plug 'kana/vim-submode'
-  Plug 'mhinz/vim-startify'
+  " Plug 'mhinz/vim-startify'
   Plug 'morhetz/gruvbox'
   Plug 'NLKNguyen/papercolor-theme'
   Plug 'prabirshrestha/vim-lsp'
@@ -19,13 +19,13 @@ call plug#begin('~/.vim/plugged')
   Plug '~/myfiler'
 call plug#end()
 
-function! PluginInstalled(name) abort
+function! PluginEnabled(name) abort
   return has_key(g:plugs, a:name) && isdirectory(g:plugs[a:name].dir)
 endfunction
 
 let mapleader = "\<Space>"
 
-if PluginInstalled('vim-lsp')
+if PluginEnabled('vim-lsp')
   augroup lsp_register_server
     autocmd!
     if executable('vim-language-server')
@@ -47,13 +47,13 @@ if PluginInstalled('vim-lsp')
     endif
     setlocal omnifunc=lsp#complete
 
+    let g:lsp_diagnostics_virtual_text_delay = 1000
     let g:lsp_diagnostics_float_delay = 1000
-    let g:lsp_diagnostics_echo_delay = 1000
 
     nmap <buffer> gd         <Plug>(lsp-definition)
     nmap <buffer> gr         <Plug>(lsp-references)
     nmap <buffer> gi         <Plug>(lsp-implementation)
-    nmap <buffer> gt         <Plug>(lsp-type-definition)
+    " nmap <buffer> gt         <Plug>(lsp-type-definition)
     nmap <buffer> <Leader>rn <Plug>(lsp-rename)
     nmap <buffer> [g         <Plug>(lsp-previous-diagnostic)
     nmap <buffer> ]g         <Plug>(lsp-next-diagnostic)
@@ -75,8 +75,9 @@ if PluginInstalled('vim-lsp')
 endif
 
 
-if PluginInstalled("vim-startify")
-  let g:startify_change_to_dir = 1
+if PluginEnabled("vim-startify")
+  let g:startify_change_to_dir = 0
+  let g:startify_change_cmd = 'tcd'
   let g:startify_enable_special = 0
   let g:startify_session_autoload = 0
   let g:startify_custom_header = 'StartifyCustomHeader()'
@@ -86,14 +87,18 @@ if PluginInstalled("vim-startify")
       \ #{ type: 'commands',     header: ['   Commands'] },
       \ ]
 
-  let g:startify_bookmarks = [
-      \ { 'r': $MYVIMRC },
-      \ { 'l': $HOME . '/.vimrc.local' },
-      \ { 'h': $HOME },
-      \ ]
+  let g:startify_bookmarks = []
+
+  function! AddBookmark(path)
+    call add(g:startify_bookmarks, { len(g:startify_bookmarks) + 1 : a:path })
+  endfunction
+
+  call AddBookmark($MYVIMRC)
+  call AddBookmark($MYVIMRC . '_local')
+  call AddBookmark($HOME)
 
   let g:startify_commands = [
-      \ { 'H': ':cd ' . $HOME },
+      \ { 'D': 'call delete("Session.vim") | Startify' },
       \ ]
 
   function! StartifyCustomHeader() abort
@@ -102,26 +107,29 @@ if PluginInstalled("vim-startify")
     let ver = 'VIM - Vi IMproved ' . major_version . '.' . minor_version
 
     let art = [
-      \ ' ____       ____                    ',
-      \ '  \ \\     / // (*)  ._. _   _      ',
-      \ '   \ \\   / //  ._.  | |/ \_/ \     ',
-      \ '    \ \\ / //   | |  | .^. .^. |    ',
-      \ '     \ V/ //    | |  | | | | | |    ',
-      \ '      \  //     |_|  |_| |_| |_|    ',
-      \ '       \//' . printf('%24s  ', ver),
-      \ '                                    '
+      \ '                               ',
+      \ ' ____     ____                 ',
+      \ '  \ \\   / // (*) ._. _   _    ', 
+      \ '   \ \\ / //  ._. | |/ \_/ \   ', 
+      \ '    \ \/ //   | | | .^. .^. |  ', 
+      \ '     \  //    | | | | | | | |  ', 
+      \ '      \//     |_| |_| |_| |_|  ',
+      \ printf('%29s  ', ver),
+      \ '                               ',
+      \ '                               '
       \ ]
     let quote = startify#fortune#boxed()
+    if len(art) > len(quote)
+      let lpad = (len(art) - len(quote)) / 2
+      let upad = len(art) - len(quote) - lpad
+      let quote = map(range(upad), '""') + quote + map(range(lpad), '""')
+    endif
     let joined = map(art, { i, str -> str . get(quote, i, '') })
     return filter(joined, { _, str -> str =~ '\S' })
   endfunction
 
   augroup for_startify
     autocmd!
-
-    " Make Startify buffers reusable
-    autocmd BufEnter * if &filetype ==# 'startify' | setlocal nobuflisted | endif
-    autocmd User Startified setlocal bufhidden=hide
 
     " See doc: startify-faq-01
     autocmd User Startified setlocal cursorline
@@ -139,12 +147,12 @@ if PluginInstalled("vim-startify")
     Startify
   endfunction
 
-  nnoremap <silent> <Leader>s :call StartifyTab()<CR>
-  nnoremap <silent> <Leader>S :Startify<CR>
+  nnoremap <silent> <Leader>S :call StartifyTab()<CR>
+  nnoremap <silent> <Leader>s :Startify<CR>
 endif
 
 
-if PluginInstalled("lightline.vim")
+if PluginEnabled("lightline.vim")
   set noshowmode
 
   let g:lightline = #{}
@@ -185,7 +193,8 @@ set viminfo='1000,<0,h
 
 
 " indent & tab options
-set smartindent expandtab tabstop=2 shiftwidth=2 softtabstop=0
+set smartindent autoindent shiftwidth=2 
+set expandtab tabstop=2 softtabstop=0 smarttab
 
 " guiding item optinos
 set number cursorline laststatus=2 showcmd showtabline=2
@@ -286,7 +295,7 @@ endfunction
 function! RipGrep() abort
   let str = input('grep: ')
   if !empty(str)
-    let rg_cmd = 'rg --line-number --no-heading --color=always --smart-case -- ' . str
+    let rg_cmd = 'rg --hidden --line-number --no-heading --color=always --smart-case -- ' . str
     let dir = &filetype == 'myfiler' ? expand('%') : getcwd()
     let fzf_param = fzf#vim#with_preview({ 'dir': dir, 'options': '--reverse --nth 3..' })
     call fzf#vim#grep(rg_cmd, fzf_param)
@@ -318,6 +327,18 @@ function! BuffersReverse() abort
   let fzf_param = fzf#vim#with_preview({ 'options': ['--reverse'] })
   call fzf#vim#buffers(fzf_param, 0)
 endfunction
+
+
+let g:myfiler_bookmark_directory = fnamemodify($HOME, ':p') . 'bookmarks'
+function! OpenBookmarkDir(tabedit = v:false)
+  if a:tabedit
+    execute 'tabedit' g:myfiler_bookmark_directory
+  else
+    execute    'edit' g:myfiler_bookmark_directory
+  endif
+endfunction
+nnoremap <silent> <Leader>S :call OpenBookmarkDir(v:true)<CR>
+nnoremap <silent> <Leader>s :call OpenBookmarkDir(v:false)<CR>
 
 
 nnoremap Y y$
@@ -366,7 +387,7 @@ function! SafeWinOnly() abort
   redraw
 endfunction
 
-if PluginInstalled("vim-submode")
+if PluginEnabled("vim-submode")
   call submode#enter_with('winsize', 'n', '', '<C-w>>', '2<C-w>>')
   call submode#enter_with('winsize', 'n', '', '<C-w><', '2<C-w><')
   call submode#enter_with('winsize', 'n', '', '<C-w>+', '<C-w>+')
@@ -379,8 +400,8 @@ if PluginInstalled("vim-submode")
   let g:submode_always_show_submode=1
 endif
 
-if filereadable(expand('~/.vimrc.local'))
-  source ~/.vimrc.local
+if filereadable($MYVIMRC . '_local')
+  execute 'source' ($MYVIMRC . '_local')
 endif
 
 syntax enable
