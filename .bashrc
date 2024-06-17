@@ -3,6 +3,8 @@ alias vi='vim'
 PS1=\\w\\$\ 
 
 [ -f ~/.fzf.bash ] && source ~/.fzf.bash
+export FZF_DEFAULT_OPTS='--ambidouble'
+export FZF_DEFAULT_COMMAND='fd --hidden --type file'
 
 fcd() {
     local dir
