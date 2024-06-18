@@ -400,6 +400,11 @@ if PluginEnabled("vim-submode")
   let g:submode_always_show_submode=1
 endif
 
+" command! AddBookmark
+
+let g:myfiler_default_config = {}
+let g:myfiler_default_config[g:myfiler_bookmark_directory] = 'DlAh'
+
 if filereadable($MYVIMRC . '_local')
   execute 'source' ($MYVIMRC . '_local')
 endif
