@@ -75,83 +75,6 @@ if PluginEnabled('vim-lsp')
 endif
 
 
-if PluginEnabled("vim-startify")
-  let g:startify_change_to_dir = 0
-  let g:startify_change_cmd = 'tcd'
-  let g:startify_enable_special = 0
-  let g:startify_session_autoload = 0
-  let g:startify_custom_header = 'StartifyCustomHeader()'
-
-  let g:startify_lists = [
-      \ #{ type: 'bookmarks',    header: ['   Bookmarks'] },
-      \ #{ type: 'commands',     header: ['   Commands'] },
-      \ ]
-
-  let g:startify_bookmarks = []
-
-  function! AddBookmark(path)
-    call add(g:startify_bookmarks, { len(g:startify_bookmarks) + 1 : a:path })
-  endfunction
-
-  call AddBookmark($MYVIMRC)
-  call AddBookmark($MYVIMRC . '_local')
-  call AddBookmark($HOME)
-
-  let g:startify_commands = [
-      \ { 'D': 'call delete("Session.vim") | Startify' },
-      \ ]
-
-  function! StartifyCustomHeader() abort
-    let major_version = v:version / 100
-    let minor_version = v:version % 100
-    let ver = 'VIM - Vi IMproved ' . major_version . '.' . minor_version
-
-    let art = [
-      \ '                               ',
-      \ ' ____     ____                 ',
-      \ '  \ \\   / // (*) ._. _   _    ', 
-      \ '   \ \\ / //  ._. | |/ \_/ \   ', 
-      \ '    \ \/ //   | | | .^. .^. |  ', 
-      \ '     \  //    | | | | | | | |  ', 
-      \ '      \//     |_| |_| |_| |_|  ',
-      \ printf('%29s  ', ver),
-      \ '                               ',
-      \ '                               '
-      \ ]
-    let quote = startify#fortune#boxed()
-    if len(art) > len(quote)
-      let lpad = (len(art) - len(quote)) / 2
-      let upad = len(art) - len(quote) - lpad
-      let quote = map(range(upad), '""') + quote + map(range(lpad), '""')
-    endif
-    let joined = map(art, { i, str -> str . get(quote, i, '') })
-    return filter(joined, { _, str -> str =~ '\S' })
-  endfunction
-
-  augroup for_startify
-    autocmd!
-
-    " See doc: startify-faq-01
-    autocmd User Startified setlocal cursorline
-
-    " See doc: startify-faq-05
-    autocmd User Startified setlocal buftype=nofile
-
-    " See doc: startify-faq-16
-    autocmd User Startified for key in ['q', 'b', 's', 'v', 't'] |
-        \ execute 'nunmap <buffer>' key | endfor
-  augroup END
-
-  function! StartifyTab() abort
-    tabnew
-    Startify
-  endfunction
-
-  nnoremap <silent> <Leader>S :call StartifyTab()<CR>
-  nnoremap <silent> <Leader>s :Startify<CR>
-endif
-
-
 if PluginEnabled("lightline.vim")
   set noshowmode
 
@@ -402,10 +325,13 @@ endif
 
 let g:myfiler_default_view = {}
 let g:myfiler_default_sort = {}
-let g:myfiler_default_view[g:myfiler_bookmark_directory] = 'DlAh'
-let g:myfiler_default_sort[g:myfiler_bookmark_directory] = ['n']
-let g:myfiler_default_view[expand('~/Downloads')] = 'TsbDlh'
-let g:myfiler_default_sort[expand('~/Downloads')] = ['T']
+let g:myfiler_default_visibility = {}
+let g:myfiler_default_view[g:myfiler_bookmark_directory] = 'DlA'
+let g:myfiler_default_sort[g:myfiler_bookmark_directory] = 'n'
+let g:myfiler_default_visibility[g:myfiler_bookmark_directory] = v:true
+let g:myfiler_default_view[expand('~/Downloads')] = 'TsbDl'
+let g:myfiler_default_sort[expand('~/Downloads')] = 'T'
+let g:myfiler_default_visibility[expand('~/Downloads')] = v:true
 
 if filereadable($MYVIMRC . '_local')
   execute 'source' ($MYVIMRC . '_local')
