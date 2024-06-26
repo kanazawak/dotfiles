@@ -116,7 +116,7 @@ set viminfo='1000,<0,h
 
 
 " indent & tab options
-set smartindent autoindent shiftwidth=2 
+set smartindent autoindent shiftwidth=2
 set expandtab tabstop=2 softtabstop=0 smarttab
 
 " guiding item optinos
@@ -182,11 +182,23 @@ endfunction
 " search behavior
 set ignorecase smartcase incsearch hlsearch wrapscan
 nnoremap <silent> <Esc> :nohlsearch<CR>
-" Search selected string (using z register)
-" TODO: save/restore z register
-vnoremap <silent> * "zy:let @/ = @z<CR>n
-vnoremap <silent> # "zy:let @/ = @z<CR>N
 
+" Customize behavior of '*', '#'
+function! SearchWord(visual) abort
+  let saved_register = @x
+  if a:visual
+    normal! gv"xy
+    let @/ = @x
+  else
+    normal! "xyiw
+    let @/ = '\<' . @x . '\>'
+  endif
+  let @x = saved_register
+endfunction
+nnoremap <silent> * :call SearchWord(0)\|set hls\|let v:searchforward=1<CR>
+nnoremap <silent> # :call SearchWord(0)\|set hls\|let v:searchforward=0<CR>
+vnoremap <silent> * :call SearchWord(1)\|set hls\|let v:searchforward=1<CR>
+vnoremap <silent> # :call SearchWord(1)\|set hls\|let v:searchforward=0<CR>
 
 " Emacs-like key bindings in insert/cmdline mode
 noremap! <C-b> <Left>
@@ -197,11 +209,7 @@ noremap! <C-h> <BS>
 noremap! <C-d> <Delete>
 
 function! s:os_open(path) abort
-  if has('win32')
-    silent execute '!start' a:path
-  else
-    silent execute '!open' a:path
-  endif
+  silent execute (has('win32') ? '!start' : '!open') shellescape(a:path)
   redraw!
 endfunction
 command! -nargs=1 OsOpen call s:os_open(<q-args>)
@@ -218,10 +226,17 @@ endfunction
 function! RipGrep() abort
   let str = input('grep: ')
   if !empty(str)
-    let rg_cmd = 'rg --hidden --line-number --no-heading --color=always --smart-case -- ' . str
+    let rg_options = [
+        \ '--hidden',
+        \ '--line-number',
+        \ '--no-heading',
+        \ '--color=always',
+        \ '--crlf',
+        \ '--smart-case']
+    let rg_cmd = join(['rg'] + rg_options + ['--', printf('%s', str)], ' ')
     let dir = &filetype == 'myfiler' ? expand('%') : getcwd()
-    let fzf_param = fzf#vim#with_preview({ 'dir': dir, 'options': '--reverse --nth 3..' })
-    call fzf#vim#grep(rg_cmd, fzf_param)
+    let fzf_param = #{ dir: dir, options: '--reverse --nth 3..' }
+    call fzf#vim#grep(rg_cmd, fzf#vim#with_preview(fzf_param))
   endif
 endfunction
 
@@ -254,11 +269,7 @@ endfunction
 
 let g:myfiler_bookmark_directory = fnamemodify($HOME, ':p') . 'bookmarks'
 function! OpenBookmarkDir(tabedit = v:false)
-  if a:tabedit
-    execute 'tabedit' g:myfiler_bookmark_directory
-  else
-    execute    'edit' g:myfiler_bookmark_directory
-  endif
+  execute (a:tabedit ? 'tabedit' : 'edit') g:myfiler_bookmark_directory
 endfunction
 nnoremap <silent> <Leader>S :call OpenBookmarkDir(v:true)<CR>
 nnoremap <silent> <Leader>s :call OpenBookmarkDir(v:false)<CR>
@@ -272,8 +283,8 @@ nnoremap <silent> ]t        gt
 " nnoremap <silent> [[q       :cpfile<CR>
 " nnoremap <silent> ]]q       :cnfile<CR>
 " nnoremap <silent> []q       :copen<CR>
-" nnoremap <silent> ][q       :cclose<CR>
-" nnoremap <silent> ][h       :helpclose<CR>
+nnoremap <silent> ][q       :cclose<CR>
+nnoremap <silent> ][h       :helpclose<CR>
 nnoremap <silent> <Leader>w :write<CR>
 nnoremap <silent> <Leader>q :quit<CR>
 nnoremap <silent> <C-n>     :call BuffersReverse()<CR>
@@ -301,7 +312,7 @@ endfunction
 
 function! SafeWinOnly() abort
   if len(tabpagebuflist()) <= 1
-    return 
+    return
   endif
   let confirm = input('Really want close other windows? (y/N): ')
   if confirm ==# 'y'
@@ -331,7 +342,7 @@ let g:myfiler_default_sort[g:myfiler_bookmark_directory] = 'n'
 let g:myfiler_default_visibility[g:myfiler_bookmark_directory] = v:true
 let g:myfiler_default_view[expand('~/Downloads')] = 'TsbDl'
 let g:myfiler_default_sort[expand('~/Downloads')] = 'T'
-let g:myfiler_default_visibility[expand('~/Downloads')] = v:true
+let g:myfiler_default_visibility[expand('~/Downloads')] = v:false
 
 if filereadable($MYVIMRC . '_local')
   execute 'source' ($MYVIMRC . '_local')
