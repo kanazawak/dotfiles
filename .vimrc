@@ -30,87 +30,6 @@ endfunction
 
 let mapleader = "\<Space>"
 
-if PluginEnabled('vim-lsp')
-" {{{
-  let g:lsp_document_highlight_enabled = 0
-  let g:lsp_diagnostics_virtual_text_delay = 1000
-  let g:lsp_diagnostics_float_delay = 1000
-
-  augroup lsp_register_server
-    autocmd!
-    if executable('vim-language-server')
-      " https://github.com/iamcco/vim-language-server
-      autocmd User lsp_setup call lsp#register_server(#{
-            \ name: 'vim-ls',
-            \ cmd: { server_info -> ['vim-language-server', '--stdio'] },
-            \ allowlist: ['vim'],
-            \ initialization_options: #{
-            \   vimruntime: $VIMRUNTIME,
-            \   runtimepath: &runtimepath,
-            \ }})
-    endif
-  augroup END
-
-  function! LspBufferConfigCommon() abort
-    if exists('+tagfunc')
-      setlocal tagfunc=lsp#tagfunc
-    endif
-    setlocal omnifunc=lsp#complete
-
-    nmap <buffer> gd         <Plug>(lsp-definition)
-    nmap <buffer> gr         <Plug>(lsp-references)
-    nmap <buffer> gi         <Plug>(lsp-implementation)
-    " nmap <buffer> gt         <Plug>(lsp-type-definition)
-    nmap <buffer> <Leader>rn <Plug>(lsp-rename)
-    nmap <buffer> [g         <Plug>(lsp-previous-diagnostic)
-    nmap <buffer> ]g         <Plug>(lsp-next-diagnostic)
-    nmap <buffer> K          <Plug>(lsp-hover)
-    " nnoremap <buffer> <expr><c-f> lsp#scroll(+4)
-    " nnoremap <buffer> <expr><c-d> lsp#scroll(-4)
-  endfunction
-
-  function! LspBufferConfigVim() abort
-    unmap <buffer> K
-  endfunction
-
-  augroup lsp_buffer_config
-    autocmd!
-    autocmd User lsp_buffer_enabled call LspBufferConfigCommon()
-          \ | if &filetype ==# 'vim' | call LspBufferConfigVim() | endif
-    autocmd CmdwinEnter * call lsp#disable_diagnostics_for_buffer()
-  augroup END
-" }}}
-endif
-
-if PluginEnabled("lightline.vim")
-" {{{
-  set noshowmode
-
-  let g:lightline = #{}
-  let g:lightline.component = #{
-        \ buffer: '[%n] %f',
-        \ cursorinfo: '%3l/%L:%2v' }
-  let g:lightline.active = #{
-        \ left:  [['mode', 'paste'], ['readonly', 'buffer', 'modified']],
-        \ right: [['cursorinfo'], [ 'fileformat', 'fileencoding', 'filetype']] }
-  let g:lightline.inactive = #{
-        \ left:  [['buffer']],
-        \ right: [['cursorinfo']] }
-  let g:lightline.tab_component_function = #{
-        \ tcd: 'LightlineTabCurrentDirectory' }
-  let g:lightline.tabline = #{
-        \ left:  [['tabs']],
-        \ right: [] }
-  let g:lightline.tab = #{
-        \ active:   ['tabnum', 'tcd'],
-        \ inactive: ['tabnum', 'tcd'] }
-
-  function! LightlineTabCurrentDirectory(tabpagenr) abort
-    return getcwd(-1, a:tabpagenr)
-  endfunction
-" }}}
-endif
-
 set belloff=all
 set backspace=indent,eol,start
 set ttimeoutlen=1
@@ -248,7 +167,142 @@ function! GetDir() abort
 endfunction
 
 
+nnoremap <silent> <Leader>e :call LaunchMyFiler()<CR>
+function! LaunchMyFiler() abort
+  if &filetype !=# 'myfiler'
+    let name = expand('%:t')
+    call myfiler#open(expand('%:p:h'))
+    call myfiler#search_name(name)
+  endif
+endfunction
+
+
+nnoremap <silent> <Leader>E :call LaunchOsFileExplorer()<CR>
+function! LaunchOsFileExplorer() abort
+  if &filetype ==# 'myfiler'
+    if has('mac')
+      silent execute "!open" shellescape(expand('%'))
+    elseif has('win32')
+      silent execute "!start" shellescape(expand('%'))
+    endif
+    redraw!
+  endif
+endfunction
+
+
+nnoremap <silent> <Leader>t :call LaunchTerminal()<CR>
+function! LaunchTerminal() abort
+  let bufnr = term_start(&shell, #{ term_finish: 'close', cwd: GetDir() })
+  call setbufvar(bufnr, "&buflisted", 0)
+endfunction
+
+
+function! OpenBookmarkDir(tabedit = v:false)
+  execute (a:tabedit ? 'tabedit' : 'edit') g:myfiler_bookmark_directory
+endfunction
+nnoremap <silent> <Leader>S :call OpenBookmarkDir(v:true)<CR>
+nnoremap <silent> <Leader>s :call OpenBookmarkDir(v:false)<CR>
+
+
+nnoremap Y y$
+nnoremap <silent> [q        :cprevious<CR>
+nnoremap <silent> ]q        :cnext<CR>
+nnoremap <silent> [t        gT
+nnoremap <silent> ]t        gt
+" nnoremap <silent> [[q       :cpfile<CR>
+" nnoremap <silent> ]]q       :cnfile<CR>
+" nnoremap <silent> []q       :copen<CR>
+nnoremap <silent> ][q       :cclose<CR>
+nnoremap <silent> ][h       :helpclose<CR>
+nnoremap <silent> <Leader>w :write<CR>
+nnoremap <silent> <Leader>q :quit<CR>
+
+
+" Prevent <C-w>o from closing of windows unintensionally 
+" {{{
+nnoremap <silent> <C-w>o     <C-w>:call SafeWinOnly()<CR>
+nnoremap <silent> <C-w><C-o> <C-w>:call SafeWinOnly()<CR>
+tnoremap <silent> <C-w>o     <C-w>:call SafeWinOnly()<CR>
+tnoremap <silent> <C-w><C-o> <C-w>:call SafeWinOnly()<CR>
+function! SafeWinOnly() abort
+  if len(tabpagebuflist()) <= 1
+    return
+  endif
+  let confirm = input('Close all other windows? (y/N): ')
+  if confirm ==# 'y'
+    call feedkeys(':', 'nx')
+    only
+  endif
+  redraw
+endfunction
+" }}}
+
+
+if PluginEnabled("vim-submode")
+" {{{
+  call submode#enter_with('winsize', 'n', '', '<C-w>>', '2<C-w>>')
+  call submode#enter_with('winsize', 'n', '', '<C-w><', '2<C-w><')
+  call submode#enter_with('winsize', 'n', '', '<C-w>+', '<C-w>+')
+  call submode#enter_with('winsize', 'n', '', '<C-w>-', '<C-w>-')
+  call submode#map('winsize', 'n', '', '>', '2<C-w>>')
+  call submode#map('winsize', 'n', '', '<', '2<C-w><')
+  call submode#map('winsize', 'n', '', '+', '<C-w>+')
+  call submode#map('winsize', 'n', '', '-', '<C-w>-')
+  let g:submode_timeoutlen=2000
+  let g:submode_always_show_submode=1
+" }}}
+endif
+
+
+let g:myfiler_bookmark_directory =
+      \ fnamemodify($HOME, ':p') . 'myfiler_bookmarks'
+let g:myfiler_default_view = {}
+let g:myfiler_default_sort = {}
+let g:myfiler_default_visibility = {}
+
+let _path = g:myfiler_bookmark_directory
+let g:myfiler_default_view[_path] = 'DlA'
+let g:myfiler_default_sort[_path] = 'n'
+let g:myfiler_default_visibility[_path] = v:true
+
+let _path = fnamemodify($HOME, ':p' . 'Downloads')
+let g:myfiler_default_view[_path] = 'TsbDl'
+let g:myfiler_default_sort[_path] = 'T'
+
+let _path = fnamemodify($HOME, ':p' . 'dotfiles')
+let g:myfiler_default_visibility[_path] = v:true
+
+function! AddBookmark() abort
+  let entry = myfiler#get_entry()
+  let path = entry.path
+  let dir = g:myfiler_bookmark_directory
+  let linkpath = fnamemodify(dir, ':p') . entry.name
+  " TODO: For Windows
+  let command = 'ln -s '
+  call system(command . shellescape(path) . ' ' . shellescape(linkpath))
+  if v:shell_error
+    call myfiler#util#echoerr('Adding bookmark failed.')
+  else
+    call myfiler#buffer#reload()
+    let bookmark_bufnr = bufnr(g:myfiler_bookmark_directory)
+    if bookmark_bufnr > 0
+      let current_bufnr = bufnr()
+      noautocmd silent execute 'keepjumps buffer' bookmark_bufnr
+      call myfiler#buffer#reload()
+      noautocmd silent execute 'keepjumps buffer' current_bufnr
+    endif
+  endif
+endfunction
+
+augroup for_myfiler
+  autocmd!
+  autocmd FileType myfiler
+        \ nmap <silent><buffer><nowait> <Leader>* :call AddBookmark()<CR>
+augroup END
+
+
 if PluginEnabled('fzf.vim')
+" {{{
   nnoremap <silent> <Leader>f :call FindFile()<CR>
   " {{{
   function! FindFile() abort
@@ -300,149 +354,103 @@ if PluginEnabled('fzf.vim')
   endfunction
 " }}}
 
+  nnoremap <silent> <Leader>: :History:<CR>
+  nnoremap <silent> <Leader>/ :History/<CR>
+  nnoremap <silent> <Leader>H :Helptag<CR>
 else
   echoerr "fzf.vim is not installed."
+" }}}
 endif
 
-function! LaunchMyFiler() abort
-  if &filetype !=# 'myfiler'
-    let name = expand('%:t')
-    call myfiler#open(expand('%:p:h'))
-    call myfiler#search_name(name)
-  endif
-endfunction
 
+if PluginEnabled('vim-lsp')
+" {{{
+  let g:lsp_document_highlight_enabled = 0
+  let g:lsp_diagnostics_virtual_text_delay = 1000
+  let g:lsp_diagnostics_float_delay = 1000
 
-nnoremap <silent> <Leader>E :call LaunchOsFileExplorer()<CR>
-function! LaunchOsFileExplorer() abort
-  if &filetype ==# 'myfiler'
-    if has('mac')
-      silent execute "!open" shellescape(expand('%'))
-    elseif has('win32')
-      silent execute "!start" shellescape(expand('%'))
+  augroup lsp_register_server
+    autocmd!
+    if executable('vim-language-server')
+      " https://github.com/iamcco/vim-language-server
+      autocmd User lsp_setup call lsp#register_server(#{
+            \ name: 'vim-ls',
+            \ cmd: { server_info -> ['vim-language-server', '--stdio'] },
+            \ allowlist: ['vim'],
+            \ initialization_options: #{
+            \   vimruntime: $VIMRUNTIME,
+            \   runtimepath: &runtimepath,
+            \ }})
     endif
-    redraw!
-  endif
-endfunction
+  augroup END
 
+  function! LspBufferConfigCommon() abort
+    if exists('+tagfunc')
+      setlocal tagfunc=lsp#tagfunc
+    endif
+    setlocal omnifunc=lsp#complete
 
-nnoremap <silent> <Leader>t :call LaunchTerminal()<CR>
-function! LaunchTerminal() abort
-  let bufnr = term_start(&shell, #{ term_finish: 'close', cwd: GetDir() })
-  call setbufvar(bufnr, "&buflisted", 0)
-endfunction
+    nmap <buffer> gd         <Plug>(lsp-definition)
+    nmap <buffer> gr         <Plug>(lsp-references)
+    nmap <buffer> gi         <Plug>(lsp-implementation)
+    " nmap <buffer> gt         <Plug>(lsp-type-definition)
+    nmap <buffer> <Leader>rn <Plug>(lsp-rename)
+    nmap <buffer> [g         <Plug>(lsp-previous-diagnostic)
+    nmap <buffer> ]g         <Plug>(lsp-next-diagnostic)
+    nmap <buffer> K          <Plug>(lsp-hover)
+    " nnoremap <buffer> <expr><c-f> lsp#scroll(+4)
+    " nnoremap <buffer> <expr><c-d> lsp#scroll(-4)
+  endfunction
 
+  function! LspBufferConfigVim() abort
+    unmap <buffer> K
+  endfunction
 
-function! OpenBookmarkDir(tabedit = v:false)
-  execute (a:tabedit ? 'tabedit' : 'edit') g:myfiler_bookmark_directory
-endfunction
-nnoremap <silent> <Leader>S :call OpenBookmarkDir(v:true)<CR>
-nnoremap <silent> <Leader>s :call OpenBookmarkDir(v:false)<CR>
-
-
-nnoremap Y y$
-nnoremap <silent> [q        :cprevious<CR>
-nnoremap <silent> ]q        :cnext<CR>
-nnoremap <silent> [t        gT
-nnoremap <silent> ]t        gt
-" nnoremap <silent> [[q       :cpfile<CR>
-" nnoremap <silent> ]]q       :cnfile<CR>
-" nnoremap <silent> []q       :copen<CR>
-nnoremap <silent> ][q       :cclose<CR>
-nnoremap <silent> ][h       :helpclose<CR>
-nnoremap <silent> <Leader>w :write<CR>
-nnoremap <silent> <Leader>q :quit<CR>
-nnoremap <silent> <Leader>: :History:<CR>
-nnoremap <silent> <Leader>/ :History/<CR>
-nnoremap <silent> <Leader>H :Helptag<CR>
-nnoremap <silent> <Leader>e :call LaunchMyFiler()<CR>
-
-" Prevent <C-w>o from closing of windows unintensionally 
-" {{{
-nnoremap <silent> <C-w>o     <C-w>:call SafeWinOnly()<CR>
-nnoremap <silent> <C-w><C-o> <C-w>:call SafeWinOnly()<CR>
-tnoremap <silent> <C-w>o     <C-w>:call SafeWinOnly()<CR>
-tnoremap <silent> <C-w><C-o> <C-w>:call SafeWinOnly()<CR>
-function! SafeWinOnly() abort
-  if len(tabpagebuflist()) <= 1
-    return
-  endif
-  let confirm = input('Close all other windows? (y/N): ')
-  if confirm ==# 'y'
-    call feedkeys(':', 'nx')
-    only
-  endif
-  redraw
-endfunction
+  augroup lsp_buffer_config
+    autocmd!
+    autocmd User lsp_buffer_enabled call LspBufferConfigCommon()
+          \ | if &filetype ==# 'vim' | call LspBufferConfigVim() | endif
+    autocmd CmdwinEnter * call lsp#disable_diagnostics_for_buffer()
+  augroup END
 " }}}
-
-if PluginEnabled("vim-submode")
-" {{{
-  call submode#enter_with('winsize', 'n', '', '<C-w>>', '2<C-w>>')
-  call submode#enter_with('winsize', 'n', '', '<C-w><', '2<C-w><')
-  call submode#enter_with('winsize', 'n', '', '<C-w>+', '<C-w>+')
-  call submode#enter_with('winsize', 'n', '', '<C-w>-', '<C-w>-')
-  call submode#map('winsize', 'n', '', '>', '2<C-w>>')
-  call submode#map('winsize', 'n', '', '<', '2<C-w><')
-  call submode#map('winsize', 'n', '', '+', '<C-w>+')
-  call submode#map('winsize', 'n', '', '-', '<C-w>-')
-  let g:submode_timeoutlen=2000
-  let g:submode_always_show_submode=1
 endif
+
+
+if PluginEnabled("lightline.vim")
+" {{{
+  set noshowmode
+
+  let g:lightline = #{}
+  let g:lightline.component = #{
+        \ buffer: '[%n] %f',
+        \ cursorinfo: '%3l/%L:%2v' }
+  let g:lightline.active = #{
+        \ left:  [['mode', 'paste'], ['readonly', 'buffer', 'modified']],
+        \ right: [['cursorinfo'], [ 'fileformat', 'fileencoding', 'filetype']] }
+  let g:lightline.inactive = #{
+        \ left:  [['buffer']],
+        \ right: [['cursorinfo']] }
+  let g:lightline.tab_component_function = #{
+        \ tcd: 'LightlineTabCurrentDirectory' }
+  let g:lightline.tabline = #{
+        \ left:  [['tabs']],
+        \ right: [] }
+  let g:lightline.tab = #{
+        \ active:   ['tabnum', 'tcd'],
+        \ inactive: ['tabnum', 'tcd'] }
+
+  function! LightlineTabCurrentDirectory(tabpagenr) abort
+    return getcwd(-1, a:tabpagenr)
+  endfunction
 " }}}
-
-let g:myfiler_bookmark_directory =
-      \ fnamemodify($HOME, ':p') . 'myfiler_bookmarks'
-let g:myfiler_default_view = {}
-let g:myfiler_default_sort = {}
-let g:myfiler_default_visibility = {}
-
-let _path = g:myfiler_bookmark_directory
-let g:myfiler_default_view[_path] = 'DlA'
-let g:myfiler_default_sort[_path] = 'n'
-let g:myfiler_default_visibility[_path] = v:true
-
-let _path = fnamemodify($HOME, ':p' . 'Downloads')
-let g:myfiler_default_view[_path] = 'TsbDl'
-let g:myfiler_default_sort[_path] = 'T'
-
-let _path = fnamemodify($HOME, ':p' . 'dotfiles')
-let g:myfiler_default_visibility[_path] = v:true
-
-function! AddBookmark() abort
-  let entry = myfiler#get_entry()
-  let path = entry.path
-  let dir = g:myfiler_bookmark_directory
-  let linkpath = fnamemodify(dir, ':p') . entry.name
-  " TODO: For Windows
-  let command = 'ln -s '
-  call system(command . shellescape(path) . ' ' . shellescape(linkpath))
-  if v:shell_error
-    call myfiler#util#echoerr('Adding bookmark failed.')
-  else
-    call myfiler#buffer#reload()
-    let bookmark_bufnr = bufnr(g:myfiler_bookmark_directory)
-    if bookmark_bufnr > 0
-      let current_bufnr = bufnr()
-      noautocmd silent execute 'keepjumps buffer' bookmark_bufnr
-      call myfiler#buffer#reload()
-      noautocmd silent execute 'keepjumps buffer' current_bufnr
-    endif
-  endif
-endfunction
-
-augroup for_myfiler
-  autocmd!
-  autocmd FileType myfiler
-        \ nmap <silent><buffer><nowait> <Leader>* :call AddBookmark()<CR>
-augroup END
+endif
 
 
 if filereadable($MYVIMRC . '_local')
   execute 'source' ($MYVIMRC . '_local')
 endif
 
-syntax enable
 
+syntax enable
 syntax match TrailingWhitespaces '\s\+$'
 highlight! default link TrailingWhitespaces Error
