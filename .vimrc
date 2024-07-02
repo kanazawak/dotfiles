@@ -1,6 +1,6 @@
 " vim: foldmethod=marker
 
-packadd! matchit
+" TODO: Check existence of vim-plug
 call plug#begin('~/.vim/plugged')
 " {{{
   Plug 'godlygeek/tabular'
@@ -20,17 +20,22 @@ call plug#begin('~/.vim/plugged')
   " Plug 'tpope/vim-unimpaired'
   Plug 'vim-jp/vimdoc-ja'
   Plug '~/myfiler'
-call plug#end()
 " }}}
-
+call plug#end()
 function! PluginEnabled(name) abort
-  return has_key(g:plugs, a:name) && isdirectory(g:plugs[a:name].dir)
+  return exists('g:plugs')
+        \ && has_key(g:plugs, a:name)
+        \ && isdirectory(g:plugs[a:name].dir)
 endfunction
 
 let mapleader = "\<Space>"
 
 if PluginEnabled('vim-lsp')
 " {{{
+  let g:lsp_document_highlight_enabled = 0
+  let g:lsp_diagnostics_virtual_text_delay = 1000
+  let g:lsp_diagnostics_float_delay = 1000
+
   augroup lsp_register_server
     autocmd!
     if executable('vim-language-server')
@@ -51,9 +56,6 @@ if PluginEnabled('vim-lsp')
       setlocal tagfunc=lsp#tagfunc
     endif
     setlocal omnifunc=lsp#complete
-
-    let g:lsp_diagnostics_virtual_text_delay = 1000
-    let g:lsp_diagnostics_float_delay = 1000
 
     nmap <buffer> gd         <Plug>(lsp-definition)
     nmap <buffer> gr         <Plug>(lsp-references)
@@ -77,9 +79,8 @@ if PluginEnabled('vim-lsp')
           \ | if &filetype ==# 'vim' | call LspBufferConfigVim() | endif
     autocmd CmdwinEnter * call lsp#disable_diagnostics_for_buffer()
   augroup END
-endif
 " }}}
-
+endif
 
 if PluginEnabled("lightline.vim")
 " {{{
@@ -107,9 +108,8 @@ if PluginEnabled("lightline.vim")
   function! LightlineTabCurrentDirectory(tabpagenr) abort
     return getcwd(-1, a:tabpagenr)
   endfunction
-endif
 " }}}
-
+endif
 
 set belloff=all
 set backspace=indent,eol,start
@@ -121,7 +121,6 @@ set ambiwidth=double
 set history=1000
 set viminfo='1000,<0,h
 set nofixendofline
-
 
 " indent & tab options
 set smartindent autoindent shiftwidth=2
@@ -195,7 +194,13 @@ endfunction
 set ignorecase smartcase incsearch hlsearch wrapscan
 nnoremap <silent> <Esc> :nohlsearch<CR>
 
+
 " Customize behavior of '*', '#'
+" {{{
+nnoremap <silent> * :call SearchWord(0) \| let v:searchforward=1<CR>
+nnoremap <silent> # :call SearchWord(0) \| let v:searchforward=0<CR>
+vnoremap <silent> * :call SearchWord(1) \| let v:searchforward=1<CR>
+vnoremap <silent> # :call SearchWord(1) \| let v:searchforward=0<CR>
 function! SearchWord(visual) abort
   let saved_register = @x
   if a:visual
@@ -209,18 +214,19 @@ function! SearchWord(visual) abort
   set hlsearch
   redraw
 endfunction
-nnoremap <silent> * :call SearchWord(0) \| let v:searchforward=1<CR>
-nnoremap <silent> # :call SearchWord(0) \| let v:searchforward=0<CR>
-vnoremap <silent> * :call SearchWord(1) \| let v:searchforward=1<CR>
-vnoremap <silent> # :call SearchWord(1) \| let v:searchforward=0<CR>
+" }}}
 
-" Emacs-like key bindings in insert/cmdline mode
+
+" Use Emacs-like key bindings in insert/cmdline mode
+" {{{
 noremap! <C-b> <Left>
 noremap! <C-f> <Right>
 noremap! <C-a> <Home>
 noremap! <C-e> <End>
 noremap! <C-h> <BS>
 noremap! <C-d> <Delete>
+" }}}
+
 
 function! s:delegate(path) abort
   silent execute (has('win32') ? '!start' : '!open') shellescape(a:path)
@@ -231,29 +237,72 @@ let g:myfiler_open_command = #{
       \ pdf: 'DelegateToOS'
       \ }
 
-function! FindFile() abort
-  let dir = &filetype == 'myfiler' ? expand('%') : getcwd()
-  call fzf#vim#files(dir, fzf#vim#with_preview())
+
+function! GetDir() abort
+  return getcwd()
+endfunction
+
+" if PluginEnabled('myfiler')
+function! GetDir() abort
+  return &filetype == 'myfiler' ? expand('%') : getcwd()
 endfunction
 
 
-function! RipGrep() abort
-  let str = input('grep: ')
-  if !empty(str)
-    let rg_options = [
-          \ '--hidden',
-          \ '--line-number',
-          \ '--no-heading',
-          \ '--color=always',
-          \ '--crlf',
-          \ '--smart-case']
-    let rg_cmd = join(['rg'] + rg_options + ['--', printf('%s', str)], ' ')
-    let dir = &filetype == 'myfiler' ? expand('%') : getcwd()
-    let fzf_param = #{ dir: dir, options: '--reverse --nth 3..' }
-    call fzf#vim#grep(rg_cmd, fzf#vim#with_preview(fzf_param))
-  endif
-endfunction
+if PluginEnabled('fzf.vim')
+  nnoremap <silent> <Leader>f :call FindFile()<CR>
+  " {{{
+  function! FindFile() abort
+    call fzf#vim#files(GetDir(), fzf#vim#with_preview())
+  endfunction
+  " }}}
 
+  nnoremap <silent> <Leader>g :call RipGrep()<CR>
+  " {{{
+  function! RipGrep() abort
+    if !executable('rg')
+      echoerr "Ripgrep is not installed."
+      return
+    endif
+    let str = input('grep: ')
+    if !empty(str)
+      let rg_options = [
+            \ '--hidden',
+            \ '--line-number',
+            \ '--no-heading',
+            \ '--color=always',
+            \ '--crlf',
+            \ '--smart-case']
+      let rg_cmd = join(['rg'] + rg_options + ['--', printf('%s', str)], ' ')
+      let fzf_param = #{ dir: GetDir(), options: '--reverse --nth 3..' }
+      call fzf#vim#grep(rg_cmd, fzf#vim#with_preview(fzf_param))
+    endif
+  endfunction
+  " }}}
+
+  nnoremap <silent> <C-n> :call BufferReverse()<CR>
+  " {{{
+  function! BufferReverse() abort
+    let fzf_param = fzf#vim#with_preview({ 'options': ['--reverse'] })
+    call fzf#vim#buffers(fzf_param, 0)
+  endfunction
+  " }}}
+
+  nnoremap <silent> <C-p> :call History()<CR>
+  " {{{
+  function! History() abort
+    let files = fzf#vim#_recent_files()
+    call filter(files, { _, file ->
+          \    file !~ '\.jax$'
+          \ && file !~ 'Cellar/.*/vim/.*/doc/.*\.txt$'
+          \ && file !~ 'plugged/.*/doc/.*\.txt$' })
+    let param = fzf#vim#with_preview(#{ source: files })
+    call fzf#vim#history(param)
+  endfunction
+" }}}
+
+else
+  echoerr "fzf.vim is not installed."
+endif
 
 function! LaunchMyFiler() abort
   if &filetype !=# 'myfiler'
@@ -264,6 +313,7 @@ function! LaunchMyFiler() abort
 endfunction
 
 
+nnoremap <silent> <Leader>E :call LaunchOsFileExplorer()<CR>
 function! LaunchOsFileExplorer() abort
   if &filetype ==# 'myfiler'
     if has('mac')
@@ -276,16 +326,10 @@ function! LaunchOsFileExplorer() abort
 endfunction
 
 
+nnoremap <silent> <Leader>t :call LaunchTerminal()<CR>
 function! LaunchTerminal() abort
-    let dir = &filetype ==# 'myfiler' ? expand('%') : getcwd()
-    let bufnr = term_start(&shell, #{ term_finish: 'close', cwd: dir })
-    call setbufvar(bufnr, "&buflisted", 0)
-endfunction
-
-
-function! BuffersReverse() abort
-  let fzf_param = fzf#vim#with_preview({ 'options': ['--reverse'] })
-  call fzf#vim#buffers(fzf_param, 0)
+  let bufnr = term_start(&shell, #{ term_finish: 'close', cwd: GetDir() })
+  call setbufvar(bufnr, "&buflisted", 0)
 endfunction
 
 
@@ -308,27 +352,13 @@ nnoremap <silent> ][q       :cclose<CR>
 nnoremap <silent> ][h       :helpclose<CR>
 nnoremap <silent> <Leader>w :write<CR>
 nnoremap <silent> <Leader>q :quit<CR>
-nnoremap <silent> <C-n>     :call BuffersReverse()<CR>
-nnoremap <silent> <C-p>     :call History()<CR>
 nnoremap <silent> <Leader>: :History:<CR>
 nnoremap <silent> <Leader>/ :History/<CR>
 nnoremap <silent> <Leader>H :Helptag<CR>
 nnoremap <silent> <Leader>e :call LaunchMyFiler()<CR>
-nnoremap <silent> <Leader>E :call LaunchOsFileExplorer()<CR>
-nnoremap <silent> <Leader>f :call FindFile()<CR>
-nnoremap <silent> <Leader>g :call RipGrep()<CR>
-nnoremap <silent> <Leader>t :call LaunchTerminal()<CR>
 
-function! History() abort
-  let files = fzf#vim#_recent_files()
-  call filter(files, { _, file ->
-        \    file !~ '\.jax$'
-        \ && file !~ 'Cellar/.*/vim/.*/doc/.*\.txt$'
-        \ && file !~ 'plugged/.*/doc/.*\.txt$' })
-  let param = fzf#vim#with_preview(#{ source: files })
-  call fzf#vim#history(param)
-endfunction
-
+" Prevent <C-w>o from closing of windows unintensionally 
+" {{{
 nnoremap <silent> <C-w>o     <C-w>:call SafeWinOnly()<CR>
 nnoremap <silent> <C-w><C-o> <C-w>:call SafeWinOnly()<CR>
 tnoremap <silent> <C-w>o     <C-w>:call SafeWinOnly()<CR>
@@ -344,6 +374,7 @@ function! SafeWinOnly() abort
   endif
   redraw
 endfunction
+" }}}
 
 if PluginEnabled("vim-submode")
 " {{{
