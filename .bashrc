@@ -2,16 +2,9 @@ set -o vi
 alias vi='vim'
 PS1=\\w\\$\ 
 
-[ -f ~/.fzf.bash ] && source ~/.fzf.bash
+eval $(fzf --bash)
 export FZF_DEFAULT_OPTS='--ambidouble'
 export FZF_DEFAULT_COMMAND='fd --hidden --type file'
-
-fcd() {
-    local dir
-    dir=$(find ${1:-.} -path '*/\.*' -prune \
-      -o -type d -print 2> /dev/null | fzf +m) &&
-    cd "$dir"
-}
 
 fkill() {
     local pid
