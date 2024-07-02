@@ -136,7 +136,7 @@ if has('mac') && executable('im-select')
   let g:normal_input_method = 'com.apple.keylayout.ABC'
 
   function! s:ime_off() abort
-    if mode() ==# 'n'
+    if mode() ==# 'n' && trim(system('im-select')) !=# g:normal_input_method
       call system('im-select ' . g:normal_input_method)
     endif
   endfunction
@@ -255,15 +255,23 @@ function! RipGrep() abort
 endfunction
 
 
-function! LaunchExplorer() abort
-  if &filetype ==# 'myfiler'
-    if has('win32')
-      execute "!start" shellescape(expand('%'))
-    endif
-  else
+function! LaunchMyFiler() abort
+  if &filetype !=# 'myfiler'
     let name = expand('%:t')
     call myfiler#open(expand('%:p:h'))
     call myfiler#search_name(name)
+  endif
+endfunction
+
+
+function! LaunchOsFileExplorer() abort
+  if &filetype ==# 'myfiler'
+    if has('mac')
+      silent execute "!open" shellescape(expand('%'))
+    elseif has('win32')
+      silent execute "!start" shellescape(expand('%'))
+    endif
+    redraw!
   endif
 endfunction
 
@@ -305,7 +313,8 @@ nnoremap <silent> <C-p>     :call History()<CR>
 nnoremap <silent> <Leader>: :History:<CR>
 nnoremap <silent> <Leader>/ :History/<CR>
 nnoremap <silent> <Leader>H :Helptag<CR>
-nnoremap <silent> <Leader>e :call LaunchExplorer()<CR>
+nnoremap <silent> <Leader>e :call LaunchMyFiler()<CR>
+nnoremap <silent> <Leader>E :call LaunchOsFileExplorer()<CR>
 nnoremap <silent> <Leader>f :call FindFile()<CR>
 nnoremap <silent> <Leader>g :call RipGrep()<CR>
 nnoremap <silent> <Leader>t :call LaunchTerminal()<CR>
@@ -337,6 +346,7 @@ function! SafeWinOnly() abort
 endfunction
 
 if PluginEnabled("vim-submode")
+" {{{
   call submode#enter_with('winsize', 'n', '', '<C-w>>', '2<C-w>>')
   call submode#enter_with('winsize', 'n', '', '<C-w><', '2<C-w><')
   call submode#enter_with('winsize', 'n', '', '<C-w>+', '<C-w>+')
@@ -348,18 +358,25 @@ if PluginEnabled("vim-submode")
   let g:submode_timeoutlen=2000
   let g:submode_always_show_submode=1
 endif
+" }}}
 
 let g:myfiler_bookmark_directory =
       \ fnamemodify($HOME, ':p') . 'myfiler_bookmarks'
 let g:myfiler_default_view = {}
 let g:myfiler_default_sort = {}
 let g:myfiler_default_visibility = {}
-let g:myfiler_default_view[g:myfiler_bookmark_directory] = 'DlA'
-let g:myfiler_default_sort[g:myfiler_bookmark_directory] = 'n'
-let g:myfiler_default_visibility[g:myfiler_bookmark_directory] = v:true
-let g:myfiler_default_view[expand('~/Downloads')] = 'TsbDl'
-let g:myfiler_default_sort[expand('~/Downloads')] = 'T'
-let g:myfiler_default_visibility[expand('~/Downloads')] = v:false
+
+let _path = g:myfiler_bookmark_directory
+let g:myfiler_default_view[_path] = 'DlA'
+let g:myfiler_default_sort[_path] = 'n'
+let g:myfiler_default_visibility[_path] = v:true
+
+let _path = fnamemodify($HOME, ':p' . 'Downloads')
+let g:myfiler_default_view[_path] = 'TsbDl'
+let g:myfiler_default_sort[_path] = 'T'
+
+let _path = fnamemodify($HOME, ':p' . 'dotfiles')
+let g:myfiler_default_visibility[_path] = v:true
 
 function! AddBookmark() abort
   let entry = myfiler#get_entry()
