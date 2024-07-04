@@ -205,23 +205,49 @@ nnoremap <silent> <Leader>s :call OpenBookmarkDir(v:false)<CR>
 
 
 nnoremap Y y$
-nnoremap <silent> [q        :cprevious<CR>
-nnoremap <silent> ]q        :cnext<CR>
 nnoremap <silent> [t        gT
 nnoremap <silent> ]t        gt
-" nnoremap <silent> [[q       :cpfile<CR>
-" nnoremap <silent> ]]q       :cnfile<CR>
-" nnoremap <silent> []q       :copen<CR>
-nnoremap <silent> ][q       :cclose<CR>
 nnoremap <silent> ][h       :helpclose<CR>
 nnoremap <silent> <Leader>w :write<CR>
 nnoremap <silent> <Leader>q :quit<CR>
 
 
-" Prevent <C-w>o from closing of windows unintensionally 
+" Add shortcuts on QuickFix
 " {{{
-nnoremap <silent> <C-w>o     <C-w>:call SafeWinOnly()<CR>
-nnoremap <silent> <C-w><C-o> <C-w>:call SafeWinOnly()<CR>
+nnoremap <silent> []q :copen<CR>
+nnoremap <silent> ][q :cclose<CR>
+nnoremap <silent> [[q :cpfile<CR>
+nnoremap <silent> ]]q :cnfile<CR>
+nnoremap <silent> ]q  :call QuickFixChange(v:true)<CR>
+nnoremap <silent> [q  :call QuickFixChange(v:false)<CR>
+function! QuickFixChange(forward)
+  try
+    if a:forward
+      cnext
+    else
+      cprev
+    endif
+    return
+  catch /E553/
+    if a:forward
+      $cc
+    else
+      1cc
+    endif
+  catch /E42/
+    echohl Error
+    echomsg v:exception
+    echohl None
+    return
+  endtry
+endfunction
+" }}}
+
+
+" Prevent <C-w>o from closing windows unintensionally
+" {{{
+nnoremap <silent> <C-w>o     :call SafeWinOnly()<CR>
+nnoremap <silent> <C-w><C-o> :call SafeWinOnly()<CR>
 tnoremap <silent> <C-w>o     <C-w>:call SafeWinOnly()<CR>
 tnoremap <silent> <C-w><C-o> <C-w>:call SafeWinOnly()<CR>
 function! SafeWinOnly() abort
@@ -238,22 +264,6 @@ endfunction
 " }}}
 
 
-if PluginEnabled("vim-submode")
-" {{{
-  call submode#enter_with('winsize', 'n', '', '<C-w>>', '2<C-w>>')
-  call submode#enter_with('winsize', 'n', '', '<C-w><', '2<C-w><')
-  call submode#enter_with('winsize', 'n', '', '<C-w>+', '<C-w>+')
-  call submode#enter_with('winsize', 'n', '', '<C-w>-', '<C-w>-')
-  call submode#map('winsize', 'n', '', '>', '2<C-w>>')
-  call submode#map('winsize', 'n', '', '<', '2<C-w><')
-  call submode#map('winsize', 'n', '', '+', '<C-w>+')
-  call submode#map('winsize', 'n', '', '-', '<C-w>-')
-  let g:submode_timeoutlen=2000
-  let g:submode_always_show_submode=1
-" }}}
-endif
-
-
 let g:myfiler_bookmark_directory =
       \ fnamemodify($HOME, ':p') . 'myfiler_bookmarks'
 let g:myfiler_default_view = {}
@@ -265,11 +275,11 @@ let g:myfiler_default_view[_path] = 'DlA'
 let g:myfiler_default_sort[_path] = 'n'
 let g:myfiler_default_visibility[_path] = v:true
 
-let _path = fnamemodify($HOME, ':p' . 'Downloads')
+let _path = fnamemodify($HOME, ':p') . 'Downloads'
 let g:myfiler_default_view[_path] = 'TsbDl'
 let g:myfiler_default_sort[_path] = 'T'
 
-let _path = fnamemodify($HOME, ':p' . 'dotfiles')
+let _path = fnamemodify($HOME, ':p') . 'dotfiles'
 let g:myfiler_default_visibility[_path] = v:true
 
 function! AddBookmark() abort
@@ -366,8 +376,9 @@ endif
 if PluginEnabled('vim-lsp')
 " {{{
   let g:lsp_document_highlight_enabled = 0
-  let g:lsp_diagnostics_virtual_text_delay = 1000
-  let g:lsp_diagnostics_float_delay = 1000
+  " let g:lsp_diagnostics_virtual_text_delay = 1000
+  " let g:lsp_diagnostics_float_delay = 1000
+  let g:lsp_diagnostics_virtual_text_align = 'after'
 
   augroup lsp_register_server
     autocmd!
@@ -440,8 +451,29 @@ if PluginEnabled("lightline.vim")
         \ inactive: ['tabnum', 'tcd'] }
 
   function! LightlineTabCurrentDirectory(tabpagenr) abort
-    return getcwd(-1, a:tabpagenr)
+    let cwd = getcwd(-1, a:tabpagenr)
+    if cwd ==# $HOME
+      return cwd
+    else
+      return fnamemodify(cwd, ':~')
+    endif
   endfunction
+" }}}
+endif
+
+
+if PluginEnabled("vim-submode")
+" {{{
+  call submode#enter_with('winsize', 'n', '', '<C-w>>', '2<C-w>>')
+  call submode#enter_with('winsize', 'n', '', '<C-w><', '2<C-w><')
+  call submode#enter_with('winsize', 'n', '', '<C-w>+', '<C-w>+')
+  call submode#enter_with('winsize', 'n', '', '<C-w>-', '<C-w>-')
+  call submode#map('winsize', 'n', '', '>', '2<C-w>>')
+  call submode#map('winsize', 'n', '', '<', '2<C-w><')
+  call submode#map('winsize', 'n', '', '+', '<C-w>+')
+  call submode#map('winsize', 'n', '', '-', '<C-w>-')
+  let g:submode_timeoutlen=2000
+  let g:submode_always_show_submode=1
 " }}}
 endif
 
