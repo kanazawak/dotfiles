@@ -163,7 +163,7 @@ endfunction
 
 " if PluginEnabled('myfiler')
 function! GetDir() abort
-  return &filetype == 'myfiler' ? expand('%') : getcwd()
+  return &filetype ==# 'myfiler' ? expand('%') : getcwd()
 endfunction
 
 
@@ -193,6 +193,7 @@ endfunction
 nnoremap <silent> <Leader>t :call LaunchTerminal()<CR>
 function! LaunchTerminal() abort
   let bufnr = term_start(&shell, #{ term_finish: 'close', cwd: GetDir() })
+  wincmd K
   call setbufvar(bufnr, "&buflisted", 0)
 endfunction
 
@@ -264,8 +265,8 @@ endfunction
 " }}}
 
 
-let g:myfiler_bookmark_directory =
-      \ fnamemodify($HOME, ':p') . 'myfiler_bookmarks'
+let _HOME = fnamemodify($HOME, ':p')
+let g:myfiler_bookmark_directory = _HOME . 'myfiler_bookmarks'
 let g:myfiler_default_view = {}
 let g:myfiler_default_sort = {}
 let g:myfiler_default_visibility = {}
@@ -275,16 +276,16 @@ let g:myfiler_default_view[_path] = 'DlA'
 let g:myfiler_default_sort[_path] = 'n'
 let g:myfiler_default_visibility[_path] = v:true
 
-let _path = fnamemodify($HOME, ':p') . 'Downloads'
+let _path = _HOME . 'Downloads'
 let g:myfiler_default_view[_path] = 'TsbDl'
 let g:myfiler_default_sort[_path] = 'T'
 
-let _path = fnamemodify($HOME, ':p') . 'dotfiles'
+let _path = _HOME . 'dotfiles'
 let g:myfiler_default_visibility[_path] = v:true
 
 function! AddBookmark() abort
-  let entry = myfiler#get_entry()
-  let path = entry.path
+  let entry = myfiler#util#get_entry()
+  let path = entry.path.ToString()
   let dir = g:myfiler_bookmark_directory
   let linkpath = fnamemodify(dir, ':p') . entry.name
   " TODO: For Windows
@@ -296,10 +297,7 @@ function! AddBookmark() abort
     call myfiler#buffer#reload()
     let bookmark_bufnr = bufnr(g:myfiler_bookmark_directory)
     if bookmark_bufnr > 0
-      let current_bufnr = bufnr()
-      noautocmd silent execute 'keepjumps buffer' bookmark_bufnr
-      call myfiler#buffer#reload()
-      noautocmd silent execute 'keepjumps buffer' current_bufnr
+      call myfiler#buffer#reload(bookmark_bufnr)
     endif
   endif
 endfunction
@@ -307,7 +305,7 @@ endfunction
 augroup for_myfiler
   autocmd!
   autocmd FileType myfiler
-        \ nmap <silent><buffer><nowait> <Leader>* :call AddBookmark()<CR>
+        \ nmap <silent><buffer><nowait> <Leader>b :call AddBookmark()<CR>
 augroup END
 
 
@@ -320,28 +318,34 @@ if PluginEnabled('fzf.vim')
   endfunction
   " }}}
 
-  nnoremap <silent> <Leader>g :call RipGrep()<CR>
-  " {{{
-  function! RipGrep() abort
-    if !executable('rg')
-      echoerr "Ripgrep is not installed."
-      return
-    endif
-    let str = input('grep: ')
-    if !empty(str)
-      let rg_options = [
-            \ '--hidden',
-            \ '--line-number',
-            \ '--no-heading',
-            \ '--color=always',
-            \ '--crlf',
-            \ '--smart-case']
-      let rg_cmd = join(['rg'] + rg_options + ['--', printf('%s', str)], ' ')
-      let fzf_param = #{ dir: GetDir(), options: '--reverse --nth 3..' }
-      call fzf#vim#grep(rg_cmd, fzf#vim#with_preview(fzf_param))
-    endif
-  endfunction
-  " }}}
+  if executable('rg')
+    nnoremap <silent> <Leader>g :call Ripgrep()<CR>
+    nnoremap <silent> <Leader>* :call Ripgrep(expand('<cword>'))<CR>
+    vnoremap <silent> <Leader>* :call RipgrepSelected()<CR>
+    " {{{
+    function! Ripgrep(str = '') abort
+      let str = input('grep: ', a:str)
+      if !empty(str)
+        let rg_options = [
+              \ '--hidden',
+              \ '--line-number',
+              \ '--no-heading',
+              \ '--color=always',
+              \ '--crlf',
+              \ '--smart-case']
+        let rg_cmd = join(['rg'] + rg_options + ['--', printf('%s', str)], ' ')
+        let fzf_param = #{ dir: GetDir(), options: '--reverse --nth 3..' }
+        call fzf#vim#grep(rg_cmd, fzf#vim#with_preview(fzf_param))
+      endif
+    endfunction
+    function! RipgrepSelected() abort
+      let saved_register = @x
+      normal! gv"xy
+      call Ripgrep(@x)
+      let @x = saved_register
+    endfunction
+    " }}}
+  endif
 
   nnoremap <silent> <C-n> :call BufferReverse()<CR>
   " {{{
@@ -466,12 +470,12 @@ if PluginEnabled("vim-submode")
 " {{{
   call submode#enter_with('winsize', 'n', '', '<C-w>>', '2<C-w>>')
   call submode#enter_with('winsize', 'n', '', '<C-w><', '2<C-w><')
-  call submode#enter_with('winsize', 'n', '', '<C-w>+', '<C-w>+')
-  call submode#enter_with('winsize', 'n', '', '<C-w>-', '<C-w>-')
+  call submode#enter_with('winsize', 'n', '', '<C-w>+',  '<C-w>+')
+  call submode#enter_with('winsize', 'n', '', '<C-w>-',  '<C-w>-')
   call submode#map('winsize', 'n', '', '>', '2<C-w>>')
   call submode#map('winsize', 'n', '', '<', '2<C-w><')
-  call submode#map('winsize', 'n', '', '+', '<C-w>+')
-  call submode#map('winsize', 'n', '', '-', '<C-w>-')
+  call submode#map('winsize', 'n', '', '+',  '<C-w>+')
+  call submode#map('winsize', 'n', '', '-',  '<C-w>-')
   let g:submode_timeoutlen=2000
   let g:submode_always_show_submode=1
 " }}}
