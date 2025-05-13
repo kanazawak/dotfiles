@@ -332,7 +332,7 @@ if PluginEnabled('fzf.vim')
     let param = fzf#vim#with_preview(#{ source: files })
     call fzf#vim#history(param)
   endfunction
-" }}}
+  " }}}
 
   nnoremap <silent> <Leader>: :History:<CR>
   nnoremap <silent> <Leader>/ :History/<CR>
