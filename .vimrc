@@ -9,15 +9,12 @@ call plug#begin('~/.vim/plugged')
   Plug 'junegunn/fzf.vim'
   Plug 'junegunn/vim-peekaboo'
   Plug 'kana/vim-submode'
-  " Plug 'mhinz/vim-startify'
   Plug 'morhetz/gruvbox'
   Plug 'NLKNguyen/papercolor-theme'
-  Plug 'prabirshrestha/vim-lsp'
   Plug 'tpope/vim-endwise'
   Plug 'tpope/vim-commentary'
   Plug 'tpope/vim-repeat'
   Plug 'tpope/vim-surround'
-  " Plug 'tpope/vim-unimpaired'
   Plug 'vim-jp/vimdoc-ja'
   Plug '~/myfiler'
 " }}}
@@ -158,11 +155,6 @@ let g:myfiler_open_command = #{
 
 
 function! GetDir() abort
-  return getcwd()
-endfunction
-
-" if PluginEnabled('myfiler')
-function! GetDir() abort
   return &filetype ==# 'myfiler' ? expand('%') : getcwd()
 endfunction
 
@@ -198,11 +190,10 @@ function! LaunchTerminal() abort
 endfunction
 
 
-function! OpenBookmarkDir(tabedit = v:false)
-  execute (a:tabedit ? 'tabedit' : 'edit') g:myfiler_bookmark_directory
+function! OpenBookmarkFile()
+  execute 'edit' g:myfiler_bookmark_file
 endfunction
-nnoremap <silent> <Leader>S :call OpenBookmarkDir(v:true)<CR>
-nnoremap <silent> <Leader>s :call OpenBookmarkDir(v:false)<CR>
+nnoremap <silent> <Leader>s :call OpenBookmarkFile()<CR>
 
 
 nnoremap Y y$
@@ -266,15 +257,15 @@ endfunction
 
 
 let _HOME = fnamemodify($HOME, ':p')
-let g:myfiler_bookmark_directory = _HOME . 'myfiler_bookmarks'
+let g:myfiler_bookmark_file = _HOME . 'myfiler_bookmarks'
+let g:myfiler_trashbox_directory = _HOME . 'myfiler_trashbox'
 let g:myfiler_default_view = {}
 let g:myfiler_default_sort = {}
 let g:myfiler_default_visibility = {}
 
-let _path = g:myfiler_bookmark_directory
-let g:myfiler_default_view[_path] = 'DlA'
-let g:myfiler_default_sort[_path] = 'n'
-let g:myfiler_default_visibility[_path] = v:true
+let _path = g:myfiler_trashbox_directory
+let g:myfiler_default_view[_path] = 'TsbDl'
+let g:myfiler_default_sort[_path] = 'T'
 
 let _path = _HOME . 'Downloads'
 let g:myfiler_default_view[_path] = 'TsbDl'
@@ -282,31 +273,6 @@ let g:myfiler_default_sort[_path] = 'T'
 
 let _path = _HOME . 'dotfiles'
 let g:myfiler_default_visibility[_path] = v:true
-
-function! AddBookmark() abort
-  let entry = myfiler#util#get_entry()
-  let path = entry.path.ToString()
-  let dir = g:myfiler_bookmark_directory
-  let linkpath = fnamemodify(dir, ':p') . entry.name
-  " TODO: For Windows
-  let command = 'ln -s '
-  call system(command . shellescape(path) . ' ' . shellescape(linkpath))
-  if v:shell_error
-    call myfiler#util#echoerr('Adding bookmark failed.')
-  else
-    call myfiler#buffer#reload()
-    let bookmark_bufnr = bufnr(g:myfiler_bookmark_directory)
-    if bookmark_bufnr > 0
-      call myfiler#buffer#reload(bookmark_bufnr)
-    endif
-  endif
-endfunction
-
-augroup for_myfiler
-  autocmd!
-  autocmd FileType myfiler
-        \ nmap <silent><buffer><nowait> <Leader>b :call AddBookmark()<CR>
-augroup END
 
 
 if PluginEnabled('fzf.vim')
@@ -377,60 +343,6 @@ else
 endif
 
 
-if PluginEnabled('vim-lsp')
-" {{{
-  let g:lsp_document_highlight_enabled = 0
-  " let g:lsp_diagnostics_virtual_text_delay = 1000
-  " let g:lsp_diagnostics_float_delay = 1000
-  let g:lsp_diagnostics_virtual_text_align = 'after'
-
-  augroup lsp_register_server
-    autocmd!
-    if executable('vim-language-server')
-      " https://github.com/iamcco/vim-language-server
-      autocmd User lsp_setup call lsp#register_server(#{
-            \ name: 'vim-ls',
-            \ cmd: { server_info -> ['vim-language-server', '--stdio'] },
-            \ allowlist: ['vim'],
-            \ initialization_options: #{
-            \   vimruntime: $VIMRUNTIME,
-            \   runtimepath: &runtimepath,
-            \ }})
-    endif
-  augroup END
-
-  function! LspBufferConfigCommon() abort
-    if exists('+tagfunc')
-      setlocal tagfunc=lsp#tagfunc
-    endif
-    setlocal omnifunc=lsp#complete
-
-    nmap <buffer> gd         <Plug>(lsp-definition)
-    nmap <buffer> gr         <Plug>(lsp-references)
-    nmap <buffer> gi         <Plug>(lsp-implementation)
-    " nmap <buffer> gt         <Plug>(lsp-type-definition)
-    nmap <buffer> <Leader>rn <Plug>(lsp-rename)
-    nmap <buffer> [g         <Plug>(lsp-previous-diagnostic)
-    nmap <buffer> ]g         <Plug>(lsp-next-diagnostic)
-    nmap <buffer> K          <Plug>(lsp-hover)
-    " nnoremap <buffer> <expr><c-f> lsp#scroll(+4)
-    " nnoremap <buffer> <expr><c-d> lsp#scroll(-4)
-  endfunction
-
-  function! LspBufferConfigVim() abort
-    unmap <buffer> K
-  endfunction
-
-  augroup lsp_buffer_config
-    autocmd!
-    autocmd User lsp_buffer_enabled call LspBufferConfigCommon()
-          \ | if &filetype ==# 'vim' | call LspBufferConfigVim() | endif
-    autocmd CmdwinEnter * call lsp#disable_diagnostics_for_buffer()
-  augroup END
-" }}}
-endif
-
-
 if PluginEnabled("lightline.vim")
 " {{{
   set noshowmode
@@ -485,8 +397,3 @@ endif
 if filereadable($MYVIMRC . '_local')
   execute 'source' ($MYVIMRC . '_local')
 endif
-
-
-syntax enable
-syntax match TrailingWhitespaces '\s\+$'
-highlight! default link TrailingWhitespaces Error
