@@ -144,13 +144,17 @@ noremap! <C-d> <Delete>
 " }}}
 
 
-function! s:delegate(path) abort
+function! OsOpen(path) abort
   silent execute (has('win32') ? '!start' : '!open') shellescape(a:path)
   redraw!
 endfunction
-command! -nargs=1 DelegateToOS call s:delegate(<args>)
-let g:myfiler_open_command = #{
-      \ pdf: 'DelegateToOS'
+let g:myfiler_open_func = #{
+      \ pdf:  funcref('OsOpen'),
+      \ xls:  funcref('OsOpen'),
+      \ xlsx: funcref('OsOpen'),
+      \ xlsm: funcref('OsOpen'),
+      \ ppt:  funcref('OsOpen'),
+      \ pptx: funcref('OsOpen')
       \ }
 
 
