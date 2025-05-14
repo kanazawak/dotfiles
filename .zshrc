@@ -41,4 +41,8 @@ zle -N zle-keymap-select
 
 # fzf
 source <(fzf --zsh)
+export FZF_DEFAULT_COMMAND='fd --hidden --type f'
 export FZF_DEFAULT_OPTS="--ambidouble"
+
+# bat
+export BAT_THEME=gruvbox-dark

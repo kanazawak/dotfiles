@@ -4,6 +4,7 @@
 call plug#begin('~/.vim/plugged')
 " {{{
   Plug 'godlygeek/tabular'
+  " Plug 'preservim/vim-markdown'
   Plug 'itchyny/lightline.vim'
   Plug 'junegunn/fzf'
   Plug 'junegunn/fzf.vim'
@@ -176,12 +177,7 @@ endfunction
 nnoremap <silent> <Leader>E :call LaunchOsFileExplorer()<CR>
 function! LaunchOsFileExplorer() abort
   if &filetype ==# 'myfiler'
-    if has('mac')
-      silent execute "!open" shellescape(expand('%'))
-    elseif has('win32')
-      silent execute "!start" shellescape(expand('%'))
-    endif
-    redraw!
+    call OsOpen(expand('%'))
   endif
 endfunction
 
@@ -203,6 +199,8 @@ nnoremap <silent> <Leader>s :call OpenBookmarkFile()<CR>
 nnoremap Y y$
 nnoremap <silent> [t        gT
 nnoremap <silent> ]t        gt
+nnoremap <silent> [d        :diffthis<CR>
+nnoremap <silent> ]d        :diffoff<CR>
 nnoremap <silent> ][h       :helpclose<CR>
 nnoremap <silent> <Leader>w :write<CR>
 nnoremap <silent> <Leader>q :quit<CR>
