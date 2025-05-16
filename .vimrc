@@ -191,12 +191,6 @@ function! LaunchTerminal() abort
 endfunction
 
 
-function! OpenBookmarkFile()
-  execute 'edit' g:myfiler_bookmark_file
-endfunction
-nnoremap <silent> <Leader>s :call OpenBookmarkFile()<CR>
-
-
 nnoremap Y y$
 nnoremap <silent> [t        gT
 nnoremap <silent> ]t        gt
@@ -326,95 +320,34 @@ if PluginEnabled('fzf.vim')
     " }}}
   endif
 
-  nnoremap <silent> <C-n> :call BufferReverse()<CR>
-  " {{{
-  function! BufferReverse() abort
-    let fzf_param = fzf#vim#with_preview({ 'options': ['--reverse'] })
-    call fzf#vim#buffers(fzf_param, 0)
-  endfunction
-  " }}}
-
-  nnoremap <silent> <C-p> :call History()<CR>
-  " {{{
-  function! History() abort
-    let files = fzf#vim#_recent_files()
-    call filter(files, { _, file ->
-          \    file !~ '\.jax$'
-          \ && file !~ 'Cellar/.*/vim/.*/doc/.*\.txt$'
-          \ && file !~ 'plugged/.*/doc/.*\.txt$' })
-    let param = fzf#vim#with_preview(#{ source: files })
-    call fzf#vim#history(param)
-  endfunction
-  " }}}
-
-  function! s:sort_bufnrs(...)
-    let [b1, b2] = map(copy(a:000), 'get(g:fzf#vim#buffers, v:val, v:val)')
-    return b1 < b2 ? 1 : -1
-  endfunction
-
-  function! s:normalize_path(path)
-    return fnamemodify(a:path, ":p:~:.")
-  endfunction
-
-  function! s:color(color_code, str)
-    return printf("\x1b[%d;1m%s\x1b[m", a:color_code, a:str)
-  endfunction
-
-  function! s:format_buffer(bufnr)
-    let name = bufname(a:bufnr)
-    let line = getbufinfo(a:bufnr)[0]['lnum']
-    let path = s:normalize_path(name)
-    let target = path . ':' . line
-    return printf("%s\t[%s]\t%s", target, s:color(32, 'Buf'), name)
-  endfunction
-
-  function! s:format_bookmark(name)
-    let path = s:normalize_path(a:name)
-    let target = path . ':' . 1
-    return printf("%s\t[%s]\t%s", target, s:color(34, 'Fav'), path)
-  endfunction
-
-  function! s:format_history(name)
-    let path = s:normalize_path(a:name)
-    let target = path . ':' . 1
-    return printf("%s\t[%s]\t%s", target, s:color(31, 'His'), path)
-  endfunction
-
-  function! s:open(line)
-    call myfiler#open(split(a:line, '\t')[2])
-  endfunction
-
-  nnoremap <silent> <C-i> :call Integrated()<CR>
+  nnoremap <silent> <C-n> :call Integrated()<CR>
   " {{{
   function! Integrated() abort
     let listed = {}
-    let bufnrs = filter(range(1, bufnr('$')), { _, b ->
-          \ buflisted(b)
-          \ && bufname(b) != ''
-          \ && getbufvar(b, "&filetype") != "qf"
-          \ })
-    let bufnrs = sort(bufnrs, 's:sort_bufnrs')
+
+    let bufnrs = filter(range(1, bufnr('$')), { _, b -> buflisted(b) && bufname(b) != '' })
+    let bufnrs = sort(bufnrs, 's:compare')
     for b in bufnrs
-      let listed[s:normalize_path(bufname(b))] = 1
+      let listed[s:normalize(bufname(b))] = 1
     endfor
     let buffer_lines = map(bufnrs, { _, bufnr -> s:format_buffer(bufnr) })
 
-    let bookmarks = filter(readfile(g:myfiler_bookmark_file), { _, name ->
-          \ !has_key(listed, s:normalize_path(name))
+    let bookmarks = filter(readfile(g:myfiler_bookmark_file), { _, path ->
+          \ !has_key(listed, s:normalize(path))
           \ })
-    for name in bookmarks
-      let listed[s:normalize_path(name)] = 1
+    for path in bookmarks
+      let listed[s:normalize(path)] = 1
     endfor
-    let bookmark_lines = map(bookmarks, { _, b -> s:format_bookmark(b) })
+    let bookmark_lines = map(bookmarks, { _, path -> s:format_bookmark(path) })
 
     let history = fzf#vim#_recent_files()
-    call filter(history, { _, name ->
-          \ filereadable(name)
-          \ && !has_key(listed, s:normalize_path(name))
-          \ && name !~ '\.jax$'
-          \ && name !~ 'Cellar/.*/vim/.*/doc/.*\.txt$'
-          \ && name !~ 'plugged/.*/doc/.*\.txt$' })
-    let history_lines = map(history, { _, name -> s:format_history(name) })
+    call filter(history, { _, path ->
+          \ !has_key(listed, s:normalize(path))
+          \ && filereadable(path)
+          \ && path !~ '\.jax$'
+          \ && path !~ 'Cellar/.*/vim/.*/doc/.*\.txt$'
+          \ && path !~ 'plugged/.*/doc/.*\.txt$' })
+    let history_lines = map(history, { _, path -> s:format_history(path) })
 
     call fzf#run(fzf#wrap(fzf#vim#with_preview(#{
           \ source: buffer_lines + bookmark_lines + history_lines,
@@ -428,6 +361,43 @@ if PluginEnabled('fzf.vim')
           \   '--prompt', 'Buf + Bookmark + History> ',
           \   '--ansi'
           \ ] })))
+  endfunction
+
+  function! s:normalize(path)
+    return fnamemodify(a:path, ":p:~:.")
+  endfunction
+
+  function! s:compare(...)
+    let [b1, b2] = map(copy(a:000), 'get(g:fzf#vim#buffers, v:val, v:val)')
+    return b1 < b2 ? 1 : -1
+  endfunction
+
+  function! s:format_buffer(bufnr)
+    let name = bufname(a:bufnr)
+    let line = getbufinfo(a:bufnr)[0]['lnum']
+    return s:format('Buff', 32, name, line)
+  endfunction
+
+  function! s:format_bookmark(path)
+    let path = s:normalize(a:path)
+    return s:format('Book', 34, path, 1)
+  endfunction
+
+  function! s:format_history(path)
+    let path = s:normalize(a:path)
+    return s:format('Hist', 31, path, 1)
+  endfunction
+
+  function! s:format(type, color_code, path, line)
+    return printf("%s:%d\t[%s]\t%s", a:path, a:line, s:color(a:color_code, a:type), a:path)
+  endfunction
+
+  function! s:color(color_code, str)
+    return printf("\x1b[%d;1m%s\x1b[m", a:color_code, a:str)
+  endfunction
+
+  function! s:open(line)
+    call myfiler#open(split(a:line, '\t')[2])
   endfunction
   " }}}
 
