@@ -238,22 +238,32 @@ endfunction
 " }}}
 
 
-" Prevent <C-w>o from closing windows unintensionally
+" Replace behavior of <C-w>o
 " {{{
-nnoremap <silent> <C-w>o     :call SafeWinOnly()<CR>
-nnoremap <silent> <C-w><C-o> :call SafeWinOnly()<CR>
-tnoremap <silent> <C-w>o     <C-w>:call SafeWinOnly()<CR>
-tnoremap <silent> <C-w><C-o> <C-w>:call SafeWinOnly()<CR>
-function! SafeWinOnly() abort
-  if len(tabpagebuflist()) <= 1
-    return
+nnoremap <silent> <C-w>o          :call MaximizeCurrentWindow()<CR>
+nnoremap <silent> <C-w><C-o>      :call MaximizeCurrentWindow()<CR>
+tnoremap <silent> <C-w>o     <C-w>:call MaximizeCurrentWindow()<CR>
+tnoremap <silent> <C-w><C-o> <C-w>:call MaximizeCurrentWindow()<CR>
+function! MaximizeCurrentWindow() abort
+  if !has_key(t:, 'saved_winsize')
+    let t:saved_winsize = { 'h': {}, 'w': {} }
+    for winnr in range(1, winnr('$'))
+      let t:saved_winsize['h'][winnr] = winheight(winnr)
+      let t:saved_winsize['w'][winnr] = winwidth(winnr)
+    endfor
+    resize
+    vertical resize
+    for winnr in range(1, winnr('$'))
+      execute            winnr . 'resize' max([2, winheight(winnr)])
+      execute 'vertical' winnr . 'resize' max([5, winwidth(winnr)])
+    endfor
+  else
+    for winnr in range(1, winnr('$'))
+      execute            winnr . 'resize' get(t:saved_winsize['h'], winnr, 4)
+      execute 'vertical' winnr . 'resize' get(t:saved_winsize['w'], winnr, 10)
+    endfor
+    unlet t:saved_winsize
   endif
-  let confirm = input('Close all other windows? (y/N): ')
-  if confirm ==# 'y'
-    call feedkeys(':', 'nx')
-    only
-  endif
-  redraw
 endfunction
 " }}}
 
