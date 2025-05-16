@@ -146,7 +146,7 @@ noremap! <C-d> <Delete>
 
 
 function! OsOpen(path) abort
-  silent execute (has('win32') ? '!start' : '!open') shellescape(a:path)
+  call system((has('win32') ? 'start ' : 'open ') . shellescape(a:path))
   redraw!
 endfunction
 let g:myfiler_open_func = #{
@@ -186,6 +186,7 @@ nnoremap <silent> <Leader>t :call LaunchTerminal()<CR>
 function! LaunchTerminal() abort
   let bufnr = term_start(&shell, #{ term_finish: 'close', cwd: GetDir() })
   wincmd K
+  8wincmd _
   call setbufvar(bufnr, "&buflisted", 0)
 endfunction
 
@@ -343,6 +344,90 @@ if PluginEnabled('fzf.vim')
           \ && file !~ 'plugged/.*/doc/.*\.txt$' })
     let param = fzf#vim#with_preview(#{ source: files })
     call fzf#vim#history(param)
+  endfunction
+  " }}}
+
+  function! s:sort_bufnrs(...)
+    let [b1, b2] = map(copy(a:000), 'get(g:fzf#vim#buffers, v:val, v:val)')
+    return b1 < b2 ? 1 : -1
+  endfunction
+
+  function! s:normalize_path(path)
+    return fnamemodify(a:path, ":p:~:.")
+  endfunction
+
+  function! s:color(color_code, str)
+    return printf("\x1b[%d;1m%s\x1b[m", a:color_code, a:str)
+  endfunction
+
+  function! s:format_buffer(bufnr)
+    let name = bufname(a:bufnr)
+    let line = getbufinfo(a:bufnr)[0]['lnum']
+    let path = s:normalize_path(name)
+    let target = path . ':' . line
+    return printf("%s\t[%s]\t%s", target, s:color(32, 'Buf'), name)
+  endfunction
+
+  function! s:format_bookmark(name)
+    let path = s:normalize_path(a:name)
+    let target = path . ':' . 1
+    return printf("%s\t[%s]\t%s", target, s:color(34, 'Fav'), path)
+  endfunction
+
+  function! s:format_history(name)
+    let path = s:normalize_path(a:name)
+    let target = path . ':' . 1
+    return printf("%s\t[%s]\t%s", target, s:color(31, 'His'), path)
+  endfunction
+
+  function! s:open(line)
+    call myfiler#open(split(a:line, '\t')[2])
+  endfunction
+
+  nnoremap <silent> <C-i> :call Integrated()<CR>
+  " {{{
+  function! Integrated() abort
+    let listed = {}
+    let bufnrs = filter(range(1, bufnr('$')), { _, b ->
+          \ buflisted(b)
+          \ && bufname(b) != ''
+          \ && getbufvar(b, "&filetype") != "qf"
+          \ })
+    let bufnrs = sort(bufnrs, 's:sort_bufnrs')
+    for b in bufnrs
+      let listed[s:normalize_path(bufname(b))] = 1
+    endfor
+    let buffer_lines = map(bufnrs, { _, bufnr -> s:format_buffer(bufnr) })
+
+    let bookmarks = filter(readfile(g:myfiler_bookmark_file), { _, name ->
+          \ !has_key(listed, s:normalize_path(name))
+          \ })
+    for name in bookmarks
+      let listed[s:normalize_path(name)] = 1
+    endfor
+    let bookmark_lines = map(bookmarks, { _, b -> s:format_bookmark(b) })
+
+    let history = fzf#vim#_recent_files()
+    call filter(history, { _, name ->
+          \ filereadable(name)
+          \ && !has_key(listed, s:normalize_path(name))
+          \ && name !~ '\.jax$'
+          \ && name !~ 'Cellar/.*/vim/.*/doc/.*\.txt$'
+          \ && name !~ 'plugged/.*/doc/.*\.txt$' })
+    let history_lines = map(history, { _, name -> s:format_history(name) })
+
+    call fzf#run(fzf#wrap(fzf#vim#with_preview(#{
+          \ source: buffer_lines + bookmark_lines + history_lines,
+          \ sink: function('s:open'),
+          \ options: [
+          \   '--reverse',
+          \   '--delimiter=\t',
+          \   '--with-nth=2..',
+          \   '--nth=2',
+          \   '--tiebreak=index',
+          \   '--prompt', 'Buf + Bookmark + History> ',
+          \   '--ansi'
+          \ ] })))
   endfunction
   " }}}
 
