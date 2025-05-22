@@ -460,45 +460,46 @@ if PluginEnabled("vim-submode")
 " }}}
 endif
 
-function! s:record_win_sizes() abort
-  let g:last_size = { 'vim': { 'height': &lines, 'width': &columns } }
+" Keep ratio of windows' size even if Vim itself is resized
+" {{{
+augroup keep_win_size_ratio
+  autocmd!
+  autocmd WinResized * call s:record_win_size()
+  autocmd VimResized * call s:restore_win_size_ratio()
+augroup END
+
+function! s:record_win_size() abort
+  let g:last_size = { 'vim': { 'h': &lines, 'w': &columns } }
   for winnr in range(1, winnr('$'))
-    let winid = win_getid(winnr)
-    let g:last_size[winid] =  { 'height': winheight(winnr), 'width': winwidth(winnr) }
+    let g:last_size[winnr] =  { 'h': winheight(winnr), 'w': winwidth(winnr) }
   endfor
 endfunction
 
-function! s:keep_win_size_balance() abort
-  let current_winid = win_getid()
-
+function! s:restore_win_size_ratio() abort
   if !exists('g:last_size')
-    call s:record_win_sizes()
+    call s:record_win_size()
     return
   endif
 
-  let new_vim_size = { 'height': &lines, 'width': &columns }
+  let last_vim_size = g:last_size['vim']
+  let new_vim_size = { 'h': &lines, 'w': &columns }
 
+  let current_winid = win_getid()
   for winnr in range(1, winnr('$'))
     execute winnr . 'wincmd w'
-    let winid = win_getid()
-    if has_key(g:last_size, winid)
-      let h = float2nr(round((0.0 + g:last_size[winid]['height']) * new_vim_size['height'] / g:last_size['vim']['height']))
-      execute 'resize ' h
-      let w = float2nr(round((0.0 + g:last_size[winid]['width'])  * new_vim_size['width']  / g:last_size['vim']['width']))
-      execute 'vertical resize ' w
+    let last_win_size = g:last_size[winnr]
+      if has_key(g:last_size, winnr)
+      let h = (0.0 + last_win_size['h']) * new_vim_size['h'] / last_vim_size['h']
+      execute          'resize' float2nr(round(h))
+      let w = (0.0 + last_win_size['w']) * new_vim_size['w'] / last_vim_size['w']
+      execute 'vertical resize' float2nr(round(w))
     endif
   endfor
-
-  call s:record_win_sizes()
-
   call win_gotoid(current_winid)
-endfunction
 
-augroup keep_windows_balance
-  autocmd!
-  autocmd WinResized * call s:record_win_sizes()
-  autocmd VimResized * call s:keep_win_size_balance()
-augroup ENd
+  call s:record_win_size()
+endfunction
+" }}}
 
 nnoremap <silent> <C-p> :call TogglePreview()<CR>
 " {{{
