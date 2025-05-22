@@ -460,6 +460,45 @@ if PluginEnabled("vim-submode")
 " }}}
 endif
 
+function! s:record_win_sizes() abort
+  let g:last_size = { 'vim': { 'height': &lines, 'width': &columns } }
+  for winnr in range(1, winnr('$'))
+    let winid = win_getid(winnr)
+    let g:last_size[winid] =  { 'height': winheight(winnr), 'width': winwidth(winnr) }
+  endfor
+endfunction
+
+function! s:keep_win_size_balance() abort
+  let current_winid = win_getid()
+
+  if !exists('g:last_size')
+    call s:record_win_sizes()
+    return
+  endif
+
+  let new_vim_size = { 'height': &lines, 'width': &columns }
+
+  for winnr in range(1, winnr('$'))
+    execute winnr . 'wincmd w'
+    let winid = win_getid()
+    if has_key(g:last_size, winid)
+      let h = float2nr(round((0.0 + g:last_size[winid]['height']) * new_vim_size['height'] / g:last_size['vim']['height']))
+      execute 'resize ' h
+      let w = float2nr(round((0.0 + g:last_size[winid]['width'])  * new_vim_size['width']  / g:last_size['vim']['width']))
+      execute 'vertical resize ' w
+    endif
+  endfor
+
+  call s:record_win_sizes()
+
+  call win_gotoid(current_winid)
+endfunction
+
+augroup keep_windows_balance
+  autocmd!
+  autocmd WinResized * call s:record_win_sizes()
+  autocmd VimResized * call s:keep_win_size_balance()
+augroup ENd
 
 nnoremap <silent> <C-p> :call TogglePreview()<CR>
 " {{{
@@ -480,22 +519,6 @@ function! TogglePreview() abort
   endif
 
   let preview_width = 50
-  let current_winid = win_getid()
-  new
-  let new_winid = win_getid()
-  wincmd L
-  execute 'vertical resize' preview_width
-
-  let height = {}
-  let width = {}
-  for winnr in range(1, winnr('$'))
-    execute winnr . 'wincmd w'
-    let winid = win_getid()
-    let height[winid] = winheight(0)
-    let width[winid] = winwidth(0)
-  endfor
-  q
-  call win_gotoid(current_winid)
 
   let preview_command = $HOME . '/bin/preview.pl'
   let split_command = 'wezterm cli split-pane --right --cells ' . preview_width
@@ -503,16 +526,8 @@ function! TogglePreview() abort
   let g:preview_paneid = str2nr(output)
   call system('wezterm cli activate-pane --pane-id ' . $WEZTERM_PANE)
 
-  for winnr in range(1, winnr('$'))
-    execute winnr . 'wincmd w'
-    let winid = win_getid()
-    execute 'resize' height[winid]
-    execute 'vertical resize' width[winid]
-  endfor
-  call win_gotoid(current_winid)
-
   if &filetype ==# 'myfiler' && !myfiler#buffer#is_empty()
-    call SendLine(myfiler#util#get_entry().path.ToString())
+    call SendPath(myfiler#util#get_entry().path.ToString())
   endif
 endfunction
 " }}}
