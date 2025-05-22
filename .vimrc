@@ -460,11 +460,11 @@ if PluginEnabled("vim-submode")
 " }}}
 endif
 
-" Keep ratio of windows' size even if Vim itself is resized
+" Try to keep ratio of windows' size whenever Vim itself is resized
 " {{{
 augroup keep_win_size_ratio
   autocmd!
-  autocmd WinResized * call s:record_win_size()
+  autocmd VimEnter,WinResized,TabEnter * call s:record_win_size()
   autocmd VimResized * call s:restore_win_size_ratio()
 augroup END
 
@@ -488,12 +488,10 @@ function! s:restore_win_size_ratio() abort
   for winnr in range(1, winnr('$'))
     execute winnr . 'wincmd w'
     let last_win_size = g:last_size[winnr]
-      if has_key(g:last_size, winnr)
-      let h = (0.0 + last_win_size['h']) * new_vim_size['h'] / last_vim_size['h']
-      execute          'resize' float2nr(round(h))
-      let w = (0.0 + last_win_size['w']) * new_vim_size['w'] / last_vim_size['w']
-      execute 'vertical resize' float2nr(round(w))
-    endif
+    let h = (0.0 + last_win_size['h']) * new_vim_size['h'] / last_vim_size['h']
+    execute          'resize' float2nr(round(h))
+    let w = (0.0 + last_win_size['w']) * new_vim_size['w'] / last_vim_size['w']
+    execute 'vertical resize' float2nr(round(w))
   endfor
   call win_gotoid(current_winid)
 
