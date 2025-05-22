@@ -461,6 +461,63 @@ if PluginEnabled("vim-submode")
 endif
 
 
+nnoremap <silent> <C-p> :call TogglePreview()<CR>
+" {{{
+function! SendPath(path) abort
+  call system(
+        \ 'wezterm cli send-text --pane-id '
+        \ . g:preview_paneid .  ' '
+        \ . shellescape("q\n" . a:path . "\n"))
+endfunction
+
+function! TogglePreview() abort
+  if exists('g:preview_paneid')
+    call system(
+          \ 'wezterm cli kill-pane --pane-id '
+          \ . g:preview_paneid)
+    unlet g:preview_paneid
+    return
+  endif
+
+  let preview_width = 50
+  let current_winid = win_getid()
+  new
+  let new_winid = win_getid()
+  wincmd L
+  execute 'vertical resize' preview_width
+
+  let height = {}
+  let width = {}
+  for winnr in range(1, winnr('$'))
+    execute winnr . 'wincmd w'
+    let winid = win_getid()
+    let height[winid] = winheight(0)
+    let width[winid] = winwidth(0)
+  endfor
+  q
+  call win_gotoid(current_winid)
+
+  let preview_command = $HOME . '/bin/preview.pl'
+  let split_command = 'wezterm cli split-pane --right --cells ' . preview_width
+  let output = system(split_command . ' -- ' . preview_command)
+  let g:preview_paneid = str2nr(output)
+  call system('wezterm cli activate-pane --pane-id ' . $WEZTERM_PANE)
+
+  for winnr in range(1, winnr('$'))
+    execute winnr . 'wincmd w'
+    let winid = win_getid()
+    execute 'resize' height[winid]
+    execute 'vertical resize' width[winid]
+  endfor
+  call win_gotoid(current_winid)
+
+  if &filetype ==# 'myfiler' && !myfiler#buffer#is_empty()
+    call SendLine(myfiler#util#get_entry().path.ToString())
+  endif
+endfunction
+" }}}
+
+
 if filereadable($MYVIMRC . '_local')
   execute 'source' ($MYVIMRC . '_local')
 endif

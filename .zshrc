@@ -46,3 +46,5 @@ export FZF_DEFAULT_OPTS="--ambidouble"
 
 # bat
 export BAT_THEME=gruvbox-dark
+
+export PATH=$HOME/bin:$PATH
