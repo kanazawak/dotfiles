@@ -484,16 +484,13 @@ function! s:restore_win_size_ratio() abort
   let last_vim_size = g:last_size['vim']
   let new_vim_size = { 'h': &lines, 'w': &columns }
 
-  let current_winid = win_getid()
   for winnr in range(1, winnr('$'))
-    execute winnr . 'wincmd w'
     let last_win_size = g:last_size[winnr]
     let h = (0.0 + last_win_size['h']) * new_vim_size['h'] / last_vim_size['h']
-    execute          'resize' float2nr(round(h))
+    execute             winnr . 'resize' float2nr(round(h))
     let w = (0.0 + last_win_size['w']) * new_vim_size['w'] / last_vim_size['w']
-    execute 'vertical resize' float2nr(round(w))
+    execute 'vertical ' winnr . 'resize' float2nr(round(w))
   endfor
-  call win_gotoid(current_winid)
 
   call s:record_win_size()
 endfunction
@@ -529,6 +526,17 @@ function! TogglePreview() abort
     call SendPath(myfiler#util#get_entry().path.ToString())
   endif
 endfunction
+
+function! s:update_preview() abort
+  if exists('g:preview_paneid') && &filetype ==# 'myfiler'
+    call SendPath(myfiler#util#get_entry().path.ToString())
+  endif
+endfunction
+
+augroup update_preview
+  autocmd!
+  autocmd CursorMoved * call s:update_preview()
+augroup END
 " }}}
 
 
