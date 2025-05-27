@@ -498,13 +498,6 @@ endfunction
 
 nnoremap <silent> <C-p> :call TogglePreview()<CR>
 " {{{
-function! s:preview(path) abort
-  call system(
-        \ 'echo "q\n preview.pl ' . shellescape(a:path)
-        \ . '" | wezterm cli send-text --no-paste --pane-id '
-        \ . g:preview_paneid .  ' ')
-endfunction
-
 function! TogglePreview() abort
   if exists('g:preview_paneid')
     call system(
@@ -516,9 +509,8 @@ function! TogglePreview() abort
 
   let preview_width = 40
 
-  let preview_command = $HOME . '/bin/preview.pl'
   let split_command = 'wezterm cli split-pane --right --cells ' . preview_width
-  let output = system(split_command) " . ' -- ' . preview_command)
+  let output = system(split_command)
   let g:preview_paneid = str2nr(output)
   call system('wezterm cli activate-pane --pane-id ' . $WEZTERM_PANE)
 
@@ -531,6 +523,13 @@ function! s:update_preview() abort
   if exists('g:preview_paneid') && &filetype ==# 'myfiler'
     call s:preview(myfiler#util#get_entry().path.ToString())
   endif
+endfunction
+
+function! s:preview(path) abort
+  call system(
+        \ 'echo "q\n preview.pl ' . shellescape(a:path)
+        \ . '" | wezterm cli send-text --no-paste --pane-id '
+        \ . g:preview_paneid .  ' ')
 endfunction
 
 augroup update_preview
