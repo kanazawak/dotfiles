@@ -498,11 +498,11 @@ endfunction
 
 nnoremap <silent> <C-p> :call TogglePreview()<CR>
 " {{{
-function! SendPath(path) abort
+function! s:preview(path) abort
   call system(
-        \ 'wezterm cli send-text --pane-id '
-        \ . g:preview_paneid .  ' '
-        \ . shellescape("q\n" . a:path . "\n"))
+        \ 'echo "q\n preview.pl ' . shellescape(a:path)
+        \ . '" | wezterm cli send-text --no-paste --pane-id '
+        \ . g:preview_paneid .  ' ')
 endfunction
 
 function! TogglePreview() abort
@@ -514,22 +514,22 @@ function! TogglePreview() abort
     return
   endif
 
-  let preview_width = 50
+  let preview_width = 40
 
   let preview_command = $HOME . '/bin/preview.pl'
   let split_command = 'wezterm cli split-pane --right --cells ' . preview_width
-  let output = system(split_command . ' -- ' . preview_command)
+  let output = system(split_command) " . ' -- ' . preview_command)
   let g:preview_paneid = str2nr(output)
   call system('wezterm cli activate-pane --pane-id ' . $WEZTERM_PANE)
 
   if &filetype ==# 'myfiler' && !myfiler#buffer#is_empty()
-    call SendPath(myfiler#util#get_entry().path.ToString())
+    call s:preview(myfiler#util#get_entry().path.ToString())
   endif
 endfunction
 
 function! s:update_preview() abort
   if exists('g:preview_paneid') && &filetype ==# 'myfiler'
-    call SendPath(myfiler#util#get_entry().path.ToString())
+    call s:preview(myfiler#util#get_entry().path.ToString())
   endif
 endfunction
 
