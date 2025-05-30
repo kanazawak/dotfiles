@@ -6,6 +6,7 @@ config.hide_tab_bar_if_only_one_tab = true
 config.window_padding = { left = 0, right = 0, top = 0, bottom = 0 }
 config.font_size = 15
 config.font = wezterm.font('Ricty Diminished')
+config.audible_bell = 'Disabled'
 config.treat_east_asian_ambiguous_width_as_wide = true
 config.color_scheme = 'GruvboxDark'
 config.keys = {

@@ -509,7 +509,9 @@ function! TogglePreview() abort
 
   let preview_width = 40
 
-  let split_command = 'wezterm cli split-pane --right --cells ' . preview_width
+  let split_command = 'wezterm cli split-pane'
+        \ . ' --right --cells ' . preview_width
+        \ . ' -- preview.pl'
   let output = system(split_command)
   let g:preview_paneid = str2nr(output)
   call system('wezterm cli activate-pane --pane-id ' . $WEZTERM_PANE)
@@ -521,14 +523,18 @@ endfunction
 
 function! s:update_preview() abort
   if exists('g:preview_paneid') && &filetype ==# 'myfiler'
-    call s:preview(myfiler#util#get_entry().path.ToString())
+    if myfiler#buffer#is_empty()
+      call s:preview('')
+    else
+      call s:preview(myfiler#util#get_entry().path.ToString())
+    endif
   endif
 endfunction
 
 function! s:preview(path) abort
   call system(
-        \ 'echo "q\n preview.pl ' . shellescape(a:path)
-        \ . '" | wezterm cli send-text --no-paste --pane-id '
+        \ 'echo "q\n' . a:path
+        \ . '\n" | wezterm cli send-text --no-paste --pane-id '
         \ . g:preview_paneid .  ' ')
 endfunction
 
