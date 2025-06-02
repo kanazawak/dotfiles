@@ -196,19 +196,18 @@ nnoremap <silent> [t        gT
 nnoremap <silent> ]t        gt
 nnoremap <silent> [d        :diffthis<CR>
 nnoremap <silent> ]d        :diffoff<CR>
-nnoremap <silent> ][h       :helpclose<CR>
+nnoremap <silent> ]h        :helpclose<CR>
 nnoremap <silent> <Leader>w :write<CR>
 nnoremap <silent> <Leader>q :quit<CR>
 
 
-" Add shortcuts on QuickFix
+" About QuickFix
 " {{{
-nnoremap <silent> []q :copen<CR>
-nnoremap <silent> ][q :cclose<CR>
-nnoremap <silent> [[q :cpfile<CR>
-nnoremap <silent> ]]q :cnfile<CR>
-nnoremap <silent> ]q  :call QuickFixChange(v:true)<CR>
-nnoremap <silent> [q  :call QuickFixChange(v:false)<CR>
+nnoremap <silent> [Q :copen<CR>
+nnoremap <silent> ]Q :cclose<CR>
+nnoremap <silent> ]q :call QuickFixChange(v:true)<CR>
+nnoremap <silent> [q :call QuickFixChange(v:false)<CR>
+
 function! QuickFixChange(forward)
   try
     if a:forward
@@ -229,6 +228,24 @@ function! QuickFixChange(forward)
     echohl None
     return
   endtry
+endfunction
+
+augroup open_quickfix_on_right
+  autocmd!
+  autocmd FileType qf wincmd L | setlocal wrap
+augroup END
+
+function! Tapi_qfclear(bufnr, args) abort
+  call setqflist([], 'r')
+endfunction
+
+function! Tapi_qfadd(bufnr, args) abort
+  call setqflist([#{
+        \ filename: a:args[0],
+        \ lnum:     a:args[1],
+        \ col:      a:args[2],
+        \ text:     a:args[3]
+        \ }], 'a')
 endfunction
 " }}}
 
@@ -293,11 +310,9 @@ if PluginEnabled('fzf.vim')
 
   if executable('rg')
     nnoremap <silent> <Leader>g :call Ripgrep()<CR>
-    nnoremap <silent> <Leader>* :call Ripgrep(expand('<cword>'))<CR>
-    vnoremap <silent> <Leader>* :call RipgrepSelected()<CR>
     " {{{
-    function! Ripgrep(str = '') abort
-      let str = input('grep: ', a:str)
+    function! Ripgrep() abort
+      let str = input('grep: ', '')
       if !empty(str)
         let rg_options = [
               \ '--hidden',
@@ -310,12 +325,6 @@ if PluginEnabled('fzf.vim')
         let fzf_param = #{ dir: GetDir(), options: '--reverse --nth 3..' }
         call fzf#vim#grep(rg_cmd, fzf#vim#with_preview(fzf_param))
       endif
-    endfunction
-    function! RipgrepSelected() abort
-      let saved_register = @x
-      normal! gv"xy
-      call Ripgrep(@x)
-      let @x = saved_register
     endfunction
     " }}}
   endif
@@ -543,6 +552,9 @@ augroup update_preview
   autocmd CursorMoved * call s:update_preview()
 augroup END
 " }}}
+
+
+" TODO: handle lcd in fzf#run
 
 
 if filereadable($MYVIMRC . '_local')
