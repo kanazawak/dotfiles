@@ -255,7 +255,7 @@ endfunction
 " }}}
 
 
-"  Keep size of terminal window in <C-w>=
+"  Keep size of terminal/quickfix window in <C-w>=
 " {{{
 nnoremap <silent> <C-w>= :call BalanceWindows()<CR>
 function! BalanceWindows() abort
@@ -263,6 +263,7 @@ function! BalanceWindows() abort
   for winnr in range(1, winnr('$'))
     let bufnr = winbufnr(winnr)
     if getbufvar(bufnr, '&buftype') ==# 'terminal'
+        \ || getbufvar(bufnr, '&buftype') ==# 'quickfix'
       let fixed_size[winnr] = #{ h: winheight(winnr), w: winwidth(winnr) }
     endif
   endfor
