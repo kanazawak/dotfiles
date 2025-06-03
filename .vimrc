@@ -9,13 +9,14 @@ call plug#begin('~/.vim/plugged')
   Plug 'junegunn/fzf'
   Plug 'junegunn/fzf.vim'
   Plug 'junegunn/vim-peekaboo'
-  Plug 'kana/vim-submode'
+  " Plug 'kana/vim-submode'
   Plug 'morhetz/gruvbox'
   Plug 'NLKNguyen/papercolor-theme'
   Plug 'tpope/vim-endwise'
   Plug 'tpope/vim-commentary'
   Plug 'tpope/vim-repeat'
   Plug 'tpope/vim-surround'
+  Plug 'simeji/winresizer'
   Plug 'vim-jp/vimdoc-ja'
   Plug '~/myfiler'
 " }}}
@@ -199,6 +200,10 @@ nnoremap <silent> ]d        :diffoff<CR>
 nnoremap <silent> ]h        :helpclose<CR>
 nnoremap <silent> <Leader>w :write<CR>
 nnoremap <silent> <Leader>q :quit<CR>
+nnoremap <silent> <C-w>o     <Nop>
+nnoremap <silent> <C-w><C-o> <Nop>
+tnoremap <silent> <C-w>o     <Nop>
+tnoremap <silent> <C-w><C-o> <Nop>
 
 
 " About QuickFix
@@ -232,7 +237,7 @@ endfunction
 
 augroup open_quickfix_on_right
   autocmd!
-  autocmd FileType qf wincmd L | setlocal wrap
+  autocmd FileType qf wincmd L | setlocal wrap | vertical resize 40
 augroup END
 
 function! Tapi_qfclear(bufnr, args) abort
@@ -250,32 +255,24 @@ endfunction
 " }}}
 
 
-" Replace behavior of <C-w>o
+"  Keep size of terminal window in <C-w>=
 " {{{
-nnoremap <silent> <C-w>o          :call MaximizeCurrentWindow()<CR>
-nnoremap <silent> <C-w><C-o>      :call MaximizeCurrentWindow()<CR>
-tnoremap <silent> <C-w>o     <C-w>:call MaximizeCurrentWindow()<CR>
-tnoremap <silent> <C-w><C-o> <C-w>:call MaximizeCurrentWindow()<CR>
-function! MaximizeCurrentWindow() abort
-  if !has_key(t:, 'saved_winsize')
-    let t:saved_winsize = { 'h': {}, 'w': {} }
-    for winnr in range(1, winnr('$'))
-      let t:saved_winsize['h'][winnr] = winheight(winnr)
-      let t:saved_winsize['w'][winnr] = winwidth(winnr)
-    endfor
-    resize
-    vertical resize
-    for winnr in range(1, winnr('$'))
-      execute            winnr . 'resize' max([2, winheight(winnr)])
-      execute 'vertical' winnr . 'resize' max([5, winwidth(winnr)])
-    endfor
-  else
-    for winnr in range(1, winnr('$'))
-      execute            winnr . 'resize' get(t:saved_winsize['h'], winnr, 4)
-      execute 'vertical' winnr . 'resize' get(t:saved_winsize['w'], winnr, 10)
-    endfor
-    unlet t:saved_winsize
-  endif
+nnoremap <silent> <C-w>= :call BalanceWindows()<CR>
+function! BalanceWindows() abort
+  let fixed_size = {}
+  for winnr in range(1, winnr('$'))
+    let bufnr = winbufnr(winnr)
+    if getbufvar(bufnr, '&buftype') ==# 'terminal'
+      let fixed_size[winnr] = #{ h: winheight(winnr), w: winwidth(winnr) }
+    endif
+  endfor
+  execute 'wincmd ='
+  for winnr in range(1, winnr('$'))
+    if has_key(fixed_size, winnr)
+      execute             winnr . 'resize' fixed_size[winnr]['h']
+      execute 'vertical ' winnr . 'resize' fixed_size[winnr]['w']
+    endif
+  endfor
 endfunction
 " }}}
 
@@ -454,20 +451,13 @@ if PluginEnabled("lightline.vim")
 endif
 
 
-if PluginEnabled("vim-submode")
-" {{{
-  call submode#enter_with('winsize', 'n', '', '<C-w>>', '2<C-w>>')
-  call submode#enter_with('winsize', 'n', '', '<C-w><', '2<C-w><')
-  call submode#enter_with('winsize', 'n', '', '<C-w>+',  '<C-w>+')
-  call submode#enter_with('winsize', 'n', '', '<C-w>-',  '<C-w>-')
-  call submode#map('winsize', 'n', '', '>', '2<C-w>>')
-  call submode#map('winsize', 'n', '', '<', '2<C-w><')
-  call submode#map('winsize', 'n', '', '+',  '<C-w>+')
-  call submode#map('winsize', 'n', '', '-',  '<C-w>-')
-  let g:submode_timeoutlen=2000
-  let g:submode_always_show_submode=1
-" }}}
+if PluginEnabled("winresizer")
+  nnoremap <silent> <Leader>r      :WinResizerStartResize<CR>
+  tnoremap <silent> <Leader>r <C-w>:WinResizerStartResize<CR>
+  let g:winresizer_horiz_resize = 1
+  let g:winresizer_vert_resize = 2
 endif
+
 
 " Try to keep ratio of windows' size whenever Vim itself is resized
 " {{{
@@ -504,6 +494,7 @@ function! s:restore_win_size_ratio() abort
   call s:record_win_size()
 endfunction
 " }}}
+
 
 nnoremap <silent> <C-p> :call TogglePreview()<CR>
 " {{{
