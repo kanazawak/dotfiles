@@ -235,9 +235,9 @@ function! QuickFixChange(forward)
   endtry
 endfunction
 
-augroup open_quickfix_on_right
+augroup quickfix_options
   autocmd!
-  autocmd FileType qf wincmd L | setlocal wrap | vertical resize 40
+  autocmd FileType qf setlocal wrap
 augroup END
 
 function! Tapi_qfclear(bufnr, args) abort
@@ -251,29 +251,6 @@ function! Tapi_qfadd(bufnr, args) abort
         \ col:      a:args[2],
         \ text:     a:args[3]
         \ }], 'a')
-endfunction
-" }}}
-
-
-"  Keep size of terminal/quickfix window in <C-w>=
-" {{{
-nnoremap <silent> <C-w>= :call BalanceWindows()<CR>
-function! BalanceWindows() abort
-  let fixed_size = {}
-  for winnr in range(1, winnr('$'))
-    let bufnr = winbufnr(winnr)
-    if getbufvar(bufnr, '&buftype') ==# 'terminal'
-        \ || getbufvar(bufnr, '&buftype') ==# 'quickfix'
-      let fixed_size[winnr] = #{ h: winheight(winnr), w: winwidth(winnr) }
-    endif
-  endfor
-  execute 'wincmd ='
-  for winnr in range(1, winnr('$'))
-    if has_key(fixed_size, winnr)
-      execute             winnr . 'resize' fixed_size[winnr]['h']
-      execute 'vertical ' winnr . 'resize' fixed_size[winnr]['w']
-    endif
-  endfor
 endfunction
 " }}}
 
@@ -496,54 +473,55 @@ function! s:restore_win_size_ratio() abort
 endfunction
 " }}}
 
+if exists('$WEZTERM_PANE')
+  nnoremap <silent> <C-p> :call TogglePreview()<CR>
+  " {{{
+  function! TogglePreview() abort
+    if exists('g:preview_paneid')
+      call system(
+            \ 'wezterm cli kill-pane --pane-id '
+            \ . g:preview_paneid)
+      unlet g:preview_paneid
+      return
+    endif
 
-nnoremap <silent> <C-p> :call TogglePreview()<CR>
-" {{{
-function! TogglePreview() abort
-  if exists('g:preview_paneid')
-    call system(
-          \ 'wezterm cli kill-pane --pane-id '
-          \ . g:preview_paneid)
-    unlet g:preview_paneid
-    return
-  endif
+    let preview_width = 40
 
-  let preview_width = 40
+    let split_command = 'wezterm cli split-pane'
+          \ . ' --right --cells ' . preview_width
+          \ . ' -- preview.pl'
+    let output = system(split_command)
+    let g:preview_paneid = str2nr(output)
+    call system('wezterm cli activate-pane --pane-id ' . $WEZTERM_PANE)
 
-  let split_command = 'wezterm cli split-pane'
-        \ . ' --right --cells ' . preview_width
-        \ . ' -- preview.pl'
-  let output = system(split_command)
-  let g:preview_paneid = str2nr(output)
-  call system('wezterm cli activate-pane --pane-id ' . $WEZTERM_PANE)
-
-  if &filetype ==# 'myfiler' && !myfiler#buffer#is_empty()
-    call s:preview(myfiler#util#get_entry().path.ToString())
-  endif
-endfunction
-
-function! s:update_preview() abort
-  if exists('g:preview_paneid') && &filetype ==# 'myfiler'
-    if myfiler#buffer#is_empty()
-      call s:preview('')
-    else
+    if &filetype ==# 'myfiler' && !myfiler#buffer#is_empty()
       call s:preview(myfiler#util#get_entry().path.ToString())
     endif
-  endif
-endfunction
+  endfunction
 
-function! s:preview(path) abort
-  call system(
-        \ 'echo "q\n' . a:path
-        \ . '\n" | wezterm cli send-text --no-paste --pane-id '
-        \ . g:preview_paneid .  ' ')
-endfunction
+  function! s:update_preview() abort
+    if exists('g:preview_paneid') && &filetype ==# 'myfiler'
+      if myfiler#buffer#is_empty()
+        call s:preview('')
+      else
+        call s:preview(myfiler#util#get_entry().path.ToString())
+      endif
+    endif
+  endfunction
 
-augroup update_preview
-  autocmd!
-  autocmd CursorMoved * call s:update_preview()
-augroup END
-" }}}
+  function! s:preview(path) abort
+    call system(
+          \ 'echo "q\n' . a:path
+          \ . '\n" | wezterm cli send-text --no-paste --pane-id '
+          \ . g:preview_paneid .  ' ')
+  endfunction
+
+  augroup update_preview
+    autocmd!
+    autocmd CursorMoved * call s:update_preview()
+  augroup END
+  " }}}
+endif
 
 
 " TODO: handle lcd in fzf#run
