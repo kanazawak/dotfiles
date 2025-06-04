@@ -181,12 +181,17 @@ nnoremap <silent> <Esc>      :nohlsearch<CR>
 
 " About QuickFix
 " {{{
-nnoremap <silent> [Q :copen<CR>
+nnoremap <silent> [Q :call QuickFixOpen()<CR>
 nnoremap <silent> ]Q :cclose<CR>
-nnoremap <silent> ]q :call QuickFixChange(v:true)<CR>
-nnoremap <silent> [q :call QuickFixChange(v:false)<CR>
+nnoremap <silent> ]q :call QuickFixJump(v:true)<CR>
+nnoremap <silent> [q :call QuickFixJump(v:false)<CR>
 
-function! QuickFixChange(forward)
+function! QuickFixOpen() abort
+  copen
+  wincmd p
+endfunction
+
+function! QuickFixJump(forward) abort
   try
     if a:forward
       cnext
@@ -208,10 +213,15 @@ function! QuickFixChange(forward)
   endtry
 endfunction
 
-augroup quickfix_options
+augroup quickfix_setup
   autocmd!
-  autocmd FileType qf setlocal wrap
+  autocmd FileType qf setlocal wrap | wincmd J
 augroup END
+
+function! Tapi_qfopen(bufnr, args) abort
+  call QuickFixOpen()
+  call setqflist([], 'r')
+endfunction
 
 function! Tapi_qfclear(bufnr, args) abort
   call setqflist([], 'r')
