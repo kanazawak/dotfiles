@@ -32,20 +32,13 @@ let mapleader = "\<Space>"
 set belloff=all
 set backspace=indent,eol,start
 set ttimeoutlen=1
-set nowrap
-set scrolloff=5
-set encoding=utf-8
-set ambiwidth=double
-set history=1000
-set viminfo='1000,<0,h
-set nofixendofline
-
-" indent & tab options
+set nowrap scrolloff=5
+set nofixendofline encoding=utf-8 ambiwidth=double
+set history=1000 viminfo='1000,<0,h
 set smartindent autoindent shiftwidth=2
 set expandtab tabstop=2 softtabstop=0 smarttab
-
-" guiding item optinos
 set number cursorline laststatus=2 showcmd showtabline=2
+set ignorecase smartcase incsearch hlsearch wrapscan
 
 " Turn IME off in entering normal mode
 if has('mac') && executable('im-select')
@@ -86,31 +79,9 @@ augroup my_autocmds
   " auto source
   autocmd BufWritePost * ++nested if &ft ==# 'vim' | source % | endif
 
-  " Keep tab-local current directory
-  autocmd DirChangedPre * call SaveTcd()
-  autocmd DirChanged * call RestoreTcd()
+  " Don't copy cwd for new tab
   autocmd TabNew * tcd ~
 augroup END
-
-function! SaveTcd() abort
-  let tabpagenr = tabpagenr()
-  noautocmd tabdo let t:_current_directory = getcwd()
-  noautocmd execute 'normal! ' . tabpagenr . 'gt'
-endfunction
-
-function! RestoreTcd() abort
-  let new_cwd = getcwd()
-  let tabpagenr = tabpagenr()
-  noautocmd tabdo execute 'tcd ' . t:_current_directory
-  noautocmd tabdo unlet t:_current_directory
-  noautocmd execute 'normal! ' . tabpagenr . 'gt'
-  noautocmd execute 'tcd ' . new_cwd
-  let t:current_directory = new_cwd
-endfunction
-
-" search behavior
-set ignorecase smartcase incsearch hlsearch wrapscan
-nnoremap <silent> <Esc> :nohlsearch<CR>
 
 
 " Customize behavior of '*', '#'
@@ -187,23 +158,25 @@ nnoremap <silent> <Leader>t :call LaunchTerminal()<CR>
 function! LaunchTerminal() abort
   let bufnr = term_start(&shell, #{ term_finish: 'close', cwd: GetDir() })
   wincmd K
-  8wincmd _
-  call setbufvar(bufnr, "&buflisted", 0)
+  resize 10
+  setlocal nobuflisted
+  setlocal winfixheight
 endfunction
 
 
-nnoremap Y y$
-nnoremap <silent> [t        gT
-nnoremap <silent> ]t        gt
-nnoremap <silent> [d        :diffthis<CR>
-nnoremap <silent> ]d        :diffoff<CR>
-nnoremap <silent> ]h        :helpclose<CR>
-nnoremap <silent> <Leader>w :write<CR>
-nnoremap <silent> <Leader>q :quit<CR>
+nnoremap <silent> Y          y$
+nnoremap <silent> [t         gT
+nnoremap <silent> ]t         gt
+nnoremap <silent> [d         :diffthis<CR>
+nnoremap <silent> ]d         :diffoff<CR>
+nnoremap <silent> ]h         :helpclose<CR>
+nnoremap <silent> <Leader>w  :write<CR>
+nnoremap <silent> <Leader>q  :quit<CR>
 nnoremap <silent> <C-w>o     <Nop>
 nnoremap <silent> <C-w><C-o> <Nop>
 tnoremap <silent> <C-w>o     <Nop>
 tnoremap <silent> <C-w><C-o> <Nop>
+nnoremap <silent> <Esc>      :nohlsearch<CR>
 
 
 " About QuickFix
@@ -305,7 +278,7 @@ if PluginEnabled('fzf.vim')
   endif
 
   nnoremap <silent> <C-n> :call Integrated()<CR>
-  " {{{
+  " {{
   function! Integrated() abort
     let listed = {}
 
@@ -385,9 +358,7 @@ if PluginEnabled('fzf.vim')
   endfunction
   " }}}
 
-  nnoremap <silent> <Leader>: :History:<CR>
-  nnoremap <silent> <Leader>/ :History/<CR>
-  nnoremap <silent> <Leader>H :Helptag<CR>
+  nnoremap <silent> [h :Helptag<CR>
 else
   echoerr "fzf.vim is not installed."
 " }}}
@@ -522,9 +493,6 @@ if exists('$WEZTERM_PANE')
   augroup END
   " }}}
 endif
-
-
-" TODO: handle lcd in fzf#run
 
 
 if filereadable($MYVIMRC . '_local')
